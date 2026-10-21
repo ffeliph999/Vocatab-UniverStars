@@ -1,0 +1,61 @@
+{
+ "voicebanks": [
+  {
+   "key": "leapsinger_ja_3singer",
+   "name": "LeapSinger 日本語 3 人（実験）",
+   "language": "ja",
+   "singers": [
+    {
+     "id": 0,
+     "name": "oniku"
+    },
+    {
+     "id": 1,
+     "name": "natsume"
+    },
+    {
+     "id": 2,
+     "name": "ritsu"
+    }
+   ],
+   "default_vocoder": "nhvsing_v3_2_1",
+   "credits": "歌声データ: おにく・夏目悠李・波音リツ（各データセットの規約に従う。非商用の研究）。 F0・子音の長さ: PrettyPitch。音響: LeapSinger。",
+   "web": "voicebanks/leapsinger_ja_3singer/web.json",
+   "bytes": {
+    "acoustic": 54276790,
+    "f0": 7456868,
+    "cons_dur": 117161
+   }
+  }
+ ],
+ "vocoders": [
+  {
+   "key": "nhvsing_v3_2_1",
+   "name": "NHVSing v3.2.1",
+   "kind": "nhvsing",
+   "voice_params": true,
+   "hop": 256,
+   "gain_db": 0.0,
+   "onnx": "vocoders/nhvsing_v3_2_1/vocoder.onnx",
+   "bytes": 6981501,
+   "grid": {
+    "sample_rate": 44100,
+    "hop": 256
+   }
+  },
+  {
+   "key": "pc_nsf_hifigan_44k_hop512",
+   "name": "NSF-HiFiGAN（PC、2025.02）",
+   "kind": "nsf_hifigan",
+   "voice_params": false,
+   "hop": 512,
+   "gain_db": 0.0,
+   "onnx": "vocoders/pc_nsf_hifigan_44k_hop512/vocoder.onnx",
+   "bytes": 56616643,
+   "grid": {
+    "sample_rate": 44100,
+    "hop": 512
+   }
+  }
+ ]
+}

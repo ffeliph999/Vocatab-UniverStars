@@ -9,3 +9,6 @@ vocoders/
 
 # プロジェクトと楽譜（歌詞・旋律は著作物のことが多いので入れない）
 svs_data/
+
+# 照らし合わせの正解（tools/golden/dump_golden.py で作り直せる。約 100 MB）
+ui/test/golden/
