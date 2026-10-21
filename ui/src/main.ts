@@ -400,7 +400,8 @@ if (sel !== null) {
 }
 // ── 保存と自動保存 ──────────────────────────────
 // 画面の確認用の引数（?demo= など）が付いているときは、自動保存を読み書きしない（使う人の保存を上書きしないように）
-const testing = location.search.length > 1 && !q.has("autosave");
+// エンジンの選び方（?gpu=0・?engine=server）はふだん使いの引数なので、確認用には数えない
+const testing = [...q.keys()].some((k) => k !== "gpu" && k !== "engine") && !q.has("autosave");
 const files = new FileMenu(store, $("btn-file"), $("save-state"), hint, sampleProject, !testing);
 // 楽譜を読み込んだら、そのトラックの頭と音域が見えるように編曲とピアノロールを動かす
 const revealNotes = (t: Track): void => {

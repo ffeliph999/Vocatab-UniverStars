@@ -49,7 +49,7 @@ export interface SynthResp {
 }
 
 export type WorkerMsg =
-  | { type: "init"; id: number; base: string }
+  | { type: "init"; id: number; base: string; gpu: boolean }
   | { type: "analyze"; id: number; req: AnalyzeReq }
   | { type: "synthesize"; id: number; req: SynthReq };
 

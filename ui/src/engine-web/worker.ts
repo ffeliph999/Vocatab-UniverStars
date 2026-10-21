@@ -19,7 +19,7 @@ const engine = new Engine(ort, (loaded, total) => post({ type: "progress", loade
 (self as any).onmessage = async (e: MessageEvent<WorkerMsg>) => {
   const m = e.data;
   try {
-    if (m.type === "init") post({ type: "result", id: m.id, result: await engine.init(m.base) });
+    if (m.type === "init") post({ type: "result", id: m.id, result: await engine.init(m.base, true, m.gpu) });
     else if (m.type === "analyze") post({ type: "result", id: m.id, result: await engine.analyze(m.req) });
     else if (m.type === "synthesize") {
       const res: SynthResp = await engine.synthesize(m.req);

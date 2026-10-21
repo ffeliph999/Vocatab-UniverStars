@@ -50,7 +50,9 @@ export class WebEngine implements EngineClient {
   async info(): Promise<EngineInfo | null> {
     try {
       // ページ（ui/index.html）の 1 つ上が svs_editor_browser の頭（web_index.json・voicebanks・vocoders がある所）
-      const idx = await this.call<WebIndex>({ type: "init", base: new URL("../", location.href).href } as WorkerMsg);
+      // ?gpu=0 で GPU（WebGPU）を使わない（ブラウザの WebGPU が不安定なときの逃げ道）
+      const gpu = new URLSearchParams(location.search).get("gpu") !== "0";
+      const idx = await this.call<WebIndex>({ type: "init", base: new URL("../", location.href).href, gpu } as WorkerMsg);
       return { voicebanks: idx.voicebanks.map((v) => ({ key: v.key, name: v.name, language: v.language, singers: v.singers,
                                                         default_vocoder: v.default_vocoder })),
                vocoders: idx.vocoders.map((v) => ({ key: v.key, name: v.name, kind: v.kind, voice_params: v.voice_params })) };
