@@ -57,7 +57,7 @@ def main():
         from duration_model.profile import from_dict
         from svs import score_io
         ps = ps_mod.load(vb.language)
-        mora = score_io.load_mora_table(phoneset=ps)
+        mora = score_io._as_mora_table(None, ps)  # エンジン（score_to_phrases）と同じ読み方。モーラ表の無い言語は空
         m = vb.models
         profile = from_dict(json.loads(m["cons_dur_profile"].read_text(encoding="utf-8")), ps)
         f0cfg = json.loads(m["f0"].with_suffix(".json").read_text(encoding="utf-8"))
