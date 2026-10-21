@@ -2,6 +2,7 @@
 // エンジンは engine-web/client.ts の窓口（既定はブラウザの中、?engine=server で手元の Python）。
 import { composeF0, type EngineInfo, type EPhrase, hashF32, phraseParams } from "./engine";
 import { type EngineClient, makeEngine } from "./engine-web/client";
+import type { RestoreEntry } from "./engine-web/protocol";
 import { t as tx } from "./i18n";
 import { activeNotes, type Track } from "./model";
 import type { Store } from "./store";
@@ -58,12 +59,28 @@ export class Renderer {
   error = "";
   /** mel の ② の行がオンか（オンのときだけ、ボイスパラメータを掛けない音の mel も頼む） */
   wantPlain: () => boolean = () => false;
+  /** mel の ③ の行がオンか（オンのときだけ、出た音の mel を頼む。1 句で 35 ms ほど） */
+  wantOut: () => boolean = () => false;
   readonly engine: EngineClient = makeEngine();
   private busy = false;
   private timer = 0;
 
   constructor(private store: Store, private onUpdate: () => void) {
     this.engine.onProgress = () => this.onUpdate(); // モデルの読み込みの進み具合
+    this.engine.onState = () => this.onUpdate(); // 待機に入った・起きた
+    // 待機から起きたエンジンへ、画面が持っている解析の結果を戻す（中身の変わっていない句を解析し直さないため）
+    this.engine.collectRestore = () => {
+      if (!this.info) return [];
+      const vb = this.voicebank.key;
+      const out: RestoreEntry[] = [];
+      for (const track of this.store.project.tracks) {
+        for (const ph of this.phrases(track)) {
+          out.push({ key: ph.key, vb, singer: this.singerId(track), ids: ph.noteIds, phonemes: ph.phonemes,
+                     start_sec: ph.startSec, plain: ph.plain, vib: ph.vib, uv: ph.uv, base: ph.base, seed: ph.seed });
+        }
+      }
+      return out;
+    };
   }
 
   async init(): Promise<void> {
@@ -149,14 +166,16 @@ export class Renderer {
           continue;
         }
         this.error = "";
+        // 中身の同じ句（鍵が同じ）は合成の結果（波形と 3 種の mel）を引き継ぐ。② を落とすと、② の行がオンのとき
+        // 編集のたびに全部の句を合成し直してしまう
         const old = new Map(this.phrases(track).map((q) => [q.key, q]));
         const list: EPhrase[] = j.phrases.map((q) => {
           const prev = old.get(q.key);
           return {
-            key: q.key, noteIds: q.note_ids, startFrame: q.start_frame, nFrames: q.n_frames, phonemes: q.phonemes,
-            plain: q.plain, vib: q.vib, uv: q.uv, base: q.base,
+            key: q.key, noteIds: q.note_ids, startFrame: q.start_frame, startSec: q.start_sec, nFrames: q.n_frames,
+            phonemes: q.phonemes, plain: q.plain, vib: q.vib, uv: q.uv, base: q.base, seed: q.seed,
             status: prev?.status ?? "解析済み", f0Hash: prev?.f0Hash, wav: prev?.wav, melIn: prev?.melIn,
-            melOut: prev?.melOut,
+            melOut: prev?.melOut, melPlain: prev?.melPlain,
           };
         });
         this.tracks.set(track.id, list);
@@ -173,6 +192,7 @@ export class Renderer {
           const params = phraseParams(ph, track, p);
           const ps = Object.keys(params).sort().map((k) => hashF32(params[k], k)).join(",");
           const plain = this.wantPlain();
+          const out = this.wantOut();
           // AI リテイク（声）: この句の音符のうち取り直したものの種
           const byId = new Map(track.notes.map((n) => [n.id, n]));
           const retakeMel: Record<string, number> = {};
@@ -181,13 +201,14 @@ export class Renderer {
             if (s) retakeMel[String(id)] = s;
           }
           const h = hashF32(log2, `${voc}|${singer}|${ps}|${JSON.stringify(retakeMel)}`);
-          if (ph.f0Hash === h && ph.wav && (!plain || ph.melPlain)) continue;
+          // ②・③ の行をオンにしたばかりで mel が無い句は、同じ音でも頼み直す（エンジンの取り置きに当たるので速い）
+          if (ph.f0Hash === h && ph.wav && (!plain || ph.melPlain) && (!out || ph.melOut)) continue;
           ph.status = "合成中";
           this.onUpdate();
           let j;
           try {
             j = await this.engine.synthesize({ voicebank: vb, singer, key: ph.key, f0_log2: log2, vocoder: voc, params,
-                                               mel_out: true, mel_plain: plain, retake_mel: retakeMel });
+                                               mel_out: out, mel_plain: plain, retake_mel: retakeMel });
           } catch (e) {
             ph.status = "失敗";
             this.error = tx("合成に失敗: {e}", { e: e instanceof Error ? e.message : String(e) });

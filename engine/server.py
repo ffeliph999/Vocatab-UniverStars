@@ -114,6 +114,7 @@ def analyze(r: AnalyzeReq):
             phs.append({"ph": p, "frames": int(d), "note": ids[min(ni, len(ids) - 1)] if ni >= 0 and ids else None,
                         "shift": float(an.shifts[j]) if an.shifts else 0.0})
         out.append({"key": key, "note_ids": ids, "start_frame": int(round(an.start_sec * fr)),
+                    "start_sec": float(an.start_sec), "seed": int(an.seed),   # ブラウザ版（protocol.ts）と同じ項目
                     "n_frames": int(an.ph_durs.sum()), "phonemes": phs,
                     "plain_log2": b64(an.plain_log2), "vib_log2": b64(an.vib_log2), "uv": b64(an.uv),
                     "base_log2": b64(an.base_log2 if an.base_log2 is not None else an.plain_log2)})

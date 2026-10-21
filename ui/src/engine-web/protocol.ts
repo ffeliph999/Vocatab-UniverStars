@@ -15,12 +15,16 @@ export interface AnalyzedPhrase {
   key: string;
   note_ids: number[];
   start_frame: number;
+  /** 句の頭（先頭の pau の頭）の絶対時刻 [s]（丸める前の値。待機から起きたエンジンへ解析の結果を戻すときに要る） */
+  start_sec: number;
   n_frames: number;
   phonemes: EPhoneme[];
   plain: Float32Array;
   vib: Float32Array;
   uv: Float32Array;
   base: Float32Array;
+  /** 乱数の種（F0 の雑音・音響モデルの励振の雑音・ボコーダの雑音。AnalyzeReq.seed） */
+  seed: number;
 }
 
 export interface AnalyzeResp {
@@ -48,12 +52,38 @@ export interface SynthResp {
   mel_plain?: Float32Array;
 }
 
-export type WorkerMsg =
-  | { type: "init"; id: number; base: string; gpu: boolean }
-  | { type: "analyze"; id: number; req: AnalyzeReq }
-  | { type: "synthesize"; id: number; req: SynthReq };
+/**
+ * 待機から起こしたエンジンへ戻す、1 句ぶんの解析の結果（analyze が返したものを画面が持っていたもの）。
+ * エンジンはここから解析の取り置き（Analysis）を組み立て直すので、中身の変わっていない句は解析し直さずに済む
+ */
+export interface RestoreEntry {
+  key: string;
+  vb: string;
+  singer?: number;
+  ids: number[];
+  phonemes: EPhoneme[];
+  start_sec: number;
+  plain: Float32Array;
+  vib: Float32Array;
+  uv: Float32Array;
+  base: Float32Array;
+  seed: number;
+}
+
+export interface RestoreResp {
+  restored: number;
+}
+
+/** Worker への呼び出し（id は client.ts が付ける） */
+export type WorkerCall =
+  | { type: "init"; base: string; gpu: boolean }
+  | { type: "analyze"; req: AnalyzeReq }
+  | { type: "synthesize"; req: SynthReq }
+  | { type: "restore"; entries: RestoreEntry[] };
+
+export type WorkerMsg = WorkerCall & { id: number };
 
 export type WorkerReply =
-  | { type: "result"; id: number; result: WebIndex | AnalyzeResp | SynthResp }
+  | { type: "result"; id: number; result: WebIndex | AnalyzeResp | SynthResp | RestoreResp }
   | { type: "error"; id: number; error: string }
   | { type: "progress"; loaded: number; total: number };

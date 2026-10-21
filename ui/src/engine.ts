@@ -22,12 +22,14 @@ export interface EPhrase {
   key: string;
   noteIds: number[];
   startFrame: number;
+  startSec: number; // 句の頭の絶対時刻（丸める前。待機から起きたエンジンへ解析の結果を戻すときに要る）
   nFrames: number;
   phonemes: EPhoneme[];
   plain: Float32Array; // 補正後の抑揚の線（log2 Hz）
   base: Float32Array; // 抑揚の土台（音高の階段を σ 20 ms で丸めたもの、log2 Hz）。抑揚 = plain − base
   vib: Float32Array; // ビブラートの成分（log2）
   uv: Float32Array; // 有声 = 1
+  seed: number; // 乱数の種（解析のときの AnalyzeReq.seed。戻すときに要る）
   status: PhraseStatus;
   f0Hash?: string; // 合成したときの F0 の指紋（同じなら合成し直さない）
   wav?: Float32Array;

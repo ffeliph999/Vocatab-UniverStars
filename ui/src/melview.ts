@@ -275,8 +275,9 @@ export class MelPanel {
   private head: HTMLElement;
   private body: HTMLElement;
 
-  /** エンジンの mel（kind ごと）と、その版。エンジンにつながっていなければ null（見せかけの mel を作る）。 */
-  engineMel: ((kind: MelKind) => { data: Float32Array | null; rev: number } | null) | null = null;
+  /** エンジンの mel（kind ごと）: 版と、中身を作る関数。エンジンにつながっていなければ null（見せかけの mel を作る）。
+   *  data() は曲全体の配列を作り直す（4 分の曲で 20 MB ほど）ので、版が変わったときだけ呼ぶ。 */
+  engineMel: ((kind: MelKind) => { data: () => Float32Array | null; rev: number } | null) | null = null;
 
   constructor(private store: Store, view: View, private derived: () => Derived, snapTicks: () => number) {
     this.el = document.createElement("div");
@@ -297,7 +298,7 @@ export class MelPanel {
       `<button class="chip ${this.on[i] ? "on" : ""}" data-i="${i}" title="${title}">${short} ${
         [t("ボコーダの入力"), t("ボコーダの出力"), t("ボイスパラメータ後")][i]}</button>`).join("") +
       `<span class="muted pp-value">${this.engineMel
-        ? t("エンジンの mel。② はボイスパラメータを掛けない音（オンのときだけ作る）")
+        ? t("エンジンの mel。② はボイスパラメータを掛けない音（②③ はオンのときだけ作る）")
         : t("見せかけのデータ（エンジン未接続）。オフの行は計算しない")}</span>`;
     for (const b of this.head.querySelectorAll<HTMLButtonElement>(".chip")) {
       b.addEventListener("click", () => {
@@ -333,7 +334,7 @@ export class MelPanel {
     if (this.count()) this.rowH = Math.max(MIN_ROW, (h - HEAD_H) / this.count());
   }
 
-  setEngine(fn: (kind: MelKind) => { data: Float32Array | null; rev: number } | null): void {
+  setEngine(fn: (kind: MelKind) => { data: () => Float32Array | null; rev: number } | null): void {
     this.engineMel = fn;
     this.keys = ["", "", ""];
     this.renderHead();
@@ -363,15 +364,17 @@ export class MelPanel {
   private compute(): void {
     const s = this.store;
     const nsf = s.vocoder === "nsf";
+    // パネルごと閉じている（下のタブ）間は計算しない。開いたときに main.ts が schedule() を呼ぶ
+    if (this.el.hidden) return;
     KINDS.forEach(([kind], i) => {
       if (!this.on[i]) return;
       const eng = this.engineMel?.(kind) ?? null;
       if (eng) {
-        // エンジンの mel（① ボコーダの入力、②③ 出た音の mel）
+        // エンジンの mel（① ボコーダの入力、②③ 出た音の mel）。版が変わったときだけ曲全体の配列を作る
         const key = `eng|${eng.rev}|${s.project.activeTrack}`;
         if (key === this.keys[i]) return;
         this.keys[i] = key;
-        this.rows[i].setData(eng.data);
+        this.rows[i].setData(eng.data());
         return;
       }
       const key = `${s.version}|${s.project.activeTrack}|${kind === "final" ? s.vocoder : ""}`;

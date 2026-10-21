@@ -4,8 +4,8 @@ import { getLang, type Lang, LANGS, t } from "./i18n";
 import { assembleWav, type Renderer } from "./render";
 import type { Store } from "./store";
 import {
-  ACCENT_PRESETS, DEFAULT_ACCENT, getAccent, getMelMap, MEL_MAPS, type MelMapKey, melGradient, setAccent, setMelMap,
-  trackColor,
+  ACCENT_PRESETS, DEFAULT_ACCENT, getAccent, getGpu, getMelMap, MEL_MAPS, type MelMapKey, melGradient, setAccent, setGpu,
+  setMelMap, trackColor,
 } from "./theme";
 
 /** 画面の真ん中に出す枠。外側を押すか Esc で閉じる。 */
@@ -134,7 +134,7 @@ export function openExportDialog(store: Store, engine: Renderer | null): void {
   });
 }
 
-/** 設定: 言語・差し色（音符・強調の色）・mel の配色。ブラウザに保存する。
+/** 設定: 言語・差し色（音符・強調の色）・mel の配色・エンジン（GPU）。ブラウザに保存する。
  *  onLang: 言語を選んだとき（画面を読み込み直す。自動保存を済ませてから） */
 export function openSettingsDialog(onLang: (l: Lang) => void = () => undefined): void {
   const { box } = modal(t("設定"));
@@ -154,7 +154,9 @@ export function openSettingsDialog(onLang: (l: Lang) => void = () => undefined):
       <div class="dlg-sub">${t("mel の配色")}<span class="h-note">${t("下のパネルの mel の色")}</span></div>
       <div class="melmaps">${(Object.keys(MEL_MAPS) as MelMapKey[]).map((k) => `
         <button class="melmap${k === mm ? " on" : ""}" data-k="${k}"><span class="mm-bar" style="background:${melGradient(k)}"></span>
-          <span class="mm-name">${MEL_MAPS[k].label}</span></button>`).join("")}</div>`;
+          <span class="mm-name">${MEL_MAPS[k].label}</span></button>`).join("")}</div>
+      <div class="dlg-sub">${t("エンジン")}</div>
+      <label class="check"><input id="gpu-on" type="checkbox"> ${t("GPU で計算する（実験的・Chrome 向け。変更は読み込み直しで反映）")}</label>`;
     for (const b of body.querySelectorAll<HTMLButtonElement>("[data-lang]")) {
       b.addEventListener("click", () => {
         if (b.dataset.lang !== getLang()) onLang(b.dataset.lang as Lang);
@@ -170,6 +172,10 @@ export function openSettingsDialog(onLang: (l: Lang) => void = () => undefined):
     for (const b of body.querySelectorAll<HTMLButtonElement>(".melmap")) {
       b.addEventListener("click", () => { setMelMap(b.dataset.k as MelMapKey); render(); });
     }
+    // GPU（WebGPU）は既定でオフ。Safari では WebGPU 入りの計算の部品を読むだけで読み込み直しが起きるので、Chrome 向けの実験的な設定
+    const gpu = body.querySelector<HTMLInputElement>("#gpu-on")!;
+    gpu.checked = getGpu();
+    gpu.addEventListener("change", () => setGpu(gpu.checked));
   };
   render();
 }

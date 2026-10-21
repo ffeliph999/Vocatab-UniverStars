@@ -59,7 +59,8 @@ pr.popOpen = () => !pop.el.hidden;
 pr.closePop = () => pop.close();
 
 // ── 下のパネル ─────────────────────────────
-const bottom = new BottomPanels($("bottom-panels"), $("tabbar"), () => undefined);
+// タブでパネルを開け閉めしたとき: mel は閉じている間は計算しないので、開いたら計算し直す
+const bottom = new BottomPanels($("bottom-panels"), $("tabbar"), () => mel.schedule());
 const params = new ParamPanel(store, view, () => pr.snapTicks(), hint, () => derived().phones);
 bottom.add("param", t("パラメータ"), "param", params.el, true, { min: () => 32 + 40 });
 const phonWrap = document.createElement("div");
@@ -146,11 +147,13 @@ let engineHooked = false;
 function onEngineUpdate(): void {
   if (renderer.connected && !engineHooked) {
     engineHooked = true;
+    // 曲全体の mel の並べ直しは重いので、mel のパネルが版（rev）の変わったときだけ data() を呼ぶ
     mel.setEngine((kind) => ({
-      data: assembleMel(renderer.phrases(store.track), kind === "acoustic" ? "in" : kind === "vocoder" ? "plain" : "out"),
+      data: () => assembleMel(renderer.phrases(store.track), kind === "acoustic" ? "in" : kind === "vocoder" ? "plain" : "out"),
       rev: renderer.rev,
     }));
     renderer.wantPlain = () => mel.isOn(1);
+    renderer.wantOut = () => mel.isOn(2);
     mel.onToggle = () => renderer.schedule(50);
     transport.engineWav = (t) => assembleWav(renderer.phrases(t));
     // ピアノロールの下端の波形: 選んでいるトラックの、合成が済んだ句の波形（エフェクトの前）
@@ -165,8 +168,10 @@ function onEngineUpdate(): void {
     const pg = renderer.engine.progress; // モデルの読み込み（初回はダウンロード）の進み具合
     const loading = pg ? t("モデルを読み込み中 {p}%（{mb} / {total} MB）", {
       p: Math.floor((100 * pg.loaded) / Math.max(1, pg.total)), mb: (pg.loaded / 1e6).toFixed(0), total: (pg.total / 1e6).toFixed(0) }) : "";
-    engineState.textContent = renderer.error || loading ||
-      `${renderer.voicebank.name}　${done < all.length ? t("描画中 {done}/{all} 句", { done, all: all.length }) : t("描画済み")}`;
+    // 待機中: しばらく操作が無くエンジンが計算の部分を手放している（次の編集で起きる）
+    const idle = done < all.length ? t("描画中 {done}/{all} 句", { done, all: all.length })
+      : renderer.engine.sleeping ? t("描画済み（待機中）") : t("描画済み");
+    engineState.textContent = renderer.error || loading || `${renderer.voicebank.name}　${idle}`;
     engineState.classList.toggle("error", !!renderer.error);
   }
   mel.schedule();
@@ -400,8 +405,8 @@ if (sel !== null) {
 }
 // ── 保存と自動保存 ──────────────────────────────
 // 画面の確認用の引数（?demo= など）が付いているときは、自動保存を読み書きしない（使う人の保存を上書きしないように）
-// エンジンの選び方（?gpu=0・?engine=server）はふだん使いの引数なので、確認用には数えない
-const testing = [...q.keys()].some((k) => k !== "gpu" && k !== "engine") && !q.has("autosave");
+// エンジンの選び方（?gpu=1・?engine=server・?idle=）はふだん使いの引数なので、確認用には数えない
+const testing = [...q.keys()].some((k) => k !== "gpu" && k !== "engine" && k !== "idle") && !q.has("autosave");
 const files = new FileMenu(store, $("btn-file"), $("save-state"), hint, sampleProject, !testing);
 // 楽譜を読み込んだら、そのトラックの頭と音域が見えるように編曲とピアノロールを動かす
 const revealNotes = (t: Track): void => {

@@ -258,12 +258,97 @@ function toFloat16Values(a: Float32Array): Float32Array {
   return o;
 }
 
+// ── float16 をビット（Uint16）で持つ ──
+// 取り置きの包絡 [T, 513] × 2 本は float32 だと 1 句で 5.5 MB になる。Python は float16 で持つので、同じく半分にする。
+// ビット → 値は 65536 通りの表で引く（spectral を使うときだけ作る）。
+// float32 → ビットの丸め（最近接・偶数へ）が roundFloat16 と同じ値になることは
+// research/experiment/web_ort_bench/host_bench.ts で 200 万個の値（非正規数・大きい値・ちょうど半分の値を含む）について確かめた
+const F32_ONE = new Float32Array(1);
+const U32_ONE = new Uint32Array(F32_ONE.buffer);
+
+/** float32 の値 → IEEE 754 binary16 のビット（numpy の astype(np.float16) と同じ丸め） */
+export function float16Bits(x: number): number {
+  F32_ONE[0] = x;
+  const b = U32_ONE[0];
+  const sign = (b >>> 16) & 0x8000;
+  const exp = (b >>> 23) & 0xff;
+  let mant = b & 0x7fffff;
+  if (exp === 0xff) return sign | 0x7c00 | (mant ? 0x200 : 0); // inf / nan
+  let e = exp - 127 + 15;
+  if (e >= 0x1f) return sign | 0x7c00; // 大きすぎ → inf
+  if (e <= 0) {
+    if (e < -10) return sign; // 0
+    mant |= 0x800000; // 非正規数: 2^-24 刻みに丸める
+    const shift = 14 - e;
+    let m = mant >>> shift;
+    const rem = mant & ((1 << shift) - 1);
+    const half = 1 << (shift - 1);
+    if (rem > half || (rem === half && (m & 1))) m++;
+    return sign | m;
+  }
+  let m = mant >>> 13;
+  const rem = mant & 0x1fff;
+  if (rem > 0x1000 || (rem === 0x1000 && (m & 1))) {
+    m++;
+    if (m === 0x400) {
+      m = 0;
+      e++;
+      if (e >= 0x1f) return sign | 0x7c00;
+    }
+  }
+  return sign | (e << 10) | m;
+}
+
+/** binary16 のビット → 値（float32 で表せる値） */
+export function float16Value(h: number): number {
+  const sign = h & 0x8000 ? -1 : 1;
+  const e = (h >>> 10) & 0x1f;
+  const m = h & 0x3ff;
+  if (e === 0) return sign * m * 2 ** -24;
+  if (e === 0x1f) return m ? NaN : sign * Infinity;
+  return sign * (1 + m / 1024) * 2 ** (e - 15);
+}
+
+let F16_LUT: Float32Array | null = null;
+
+/** float32 の配列 → float16 のビット（取り置き用。大きさは半分） */
+export function toFloat16Bits(a: Float32Array): Uint16Array {
+  const o = new Uint16Array(a.length);
+  for (let i = 0; i < a.length; i++) o[i] = float16Bits(a[i]);
+  return o;
+}
+
+/** float16 のビット → float32 の値（表引き。roundFloat16 を通した値と同じ） */
+export function fromFloat16Bits(a: Uint16Array): Float32Array {
+  if (!F16_LUT) {
+    F16_LUT = new Float32Array(65536);
+    for (let i = 0; i < 65536; i++) F16_LUT[i] = float16Value(i);
+  }
+  const lut = F16_LUT;
+  const o = new Float32Array(a.length);
+  for (let i = 0; i < a.length; i++) o[i] = lut[a[i]];
+  return o;
+}
+
+/** ボコーダの出力（NHVSing: harmonic・noise_out・env_h・env_n（・waveform）、NSF-HiFiGAN: waveform）。
+ * 包絡は、モデルの生の出力（Float32Array。使う前に float16 に丸める）か、取り置きの float16 のビット（Uint16Array）。
+ * 取り置きは Python（engine/pipeline.py の _vocode）と同じく waveform を持たない（調波 + 雑音から作り直す） */
+export interface VocOut {
+  harmonic?: Float32Array;
+  noise_out?: Float32Array;
+  env_h?: Float32Array | Uint16Array;
+  env_n?: Float32Array | Uint16Array;
+  waveform?: Float32Array;
+}
+
+/** 包絡を spectral に渡す float32 の値に（Python が float16 で持つのと同じ丸めの値） */
+const envValues = (e: Float32Array | Uint16Array): Float32Array =>
+  e instanceof Uint16Array ? fromFloat16Bits(e) : toFloat16Values(e);
+
 /** synthesize のボコーダの後: ボイスパラメータ（枝のあるボコーダだけ）・利得・うなり・音量・リミッタ。
- * out はボコーダの出力（NHVSing: waveform・harmonic・noise_out・env_h・env_n、NSF-HiFiGAN: waveform）。
- * wantPlain: ボイスパラメータを掛けない音（mel の ② 用）も返す */
+ * out はボコーダの出力（VocOut）。wantPlain: ボイスパラメータを掛けない音（mel の ② 用）も返す */
 export function finishSynth(
-  voc: { kind: string; voice_params: boolean; gain_db: number }, T: number,
-  out: { harmonic?: Float32Array; noise_out?: Float32Array; env_h?: Float32Array; env_n?: Float32Array; waveform?: Float32Array },
+  voc: { kind: string; voice_params: boolean; gain_db: number }, T: number, out: VocOut,
   params: Record<string, Float32Array>, uvHard: Float32Array, cons: Uint8Array, wantPlain: boolean,
 ): { wav: Float32Array; wavPlain: Float32Array | null } {
   const N = T * HOP;
@@ -279,9 +364,12 @@ export function finishSynth(
       plain = new Float32Array(n);
       for (let i = 0; i < n; i++) plain[i] = Math.min(Math.max(fr32(harm[i] + noise[i]), -1.0), 1.0) * g;
     }
-    // 取り置きを小さくするため Python は包絡を float16 で持つ。同じ丸めをしてから使う
-    const envH = out.env_h ? toFloat16Values(out.env_h) : null;
-    const envN = out.env_n ? toFloat16Values(out.env_n) : null;
+    // 取り置きを小さくするため Python は包絡を float16 で持つ。同じ丸めをしてから使う。
+    // テンション・ジェンダー・響きが既定値なら spectral は包絡を見ずに調波・雑音をそのまま返す（engine/voiceparams.py の
+    // spectral も is_neutral で同じく素通し）ので、丸め（1 句で 60 ms ほど）も表引きもしない
+    const useEnv = !VP.isNeutral(params, VP.SPECTRAL_KEYS);
+    const envH = useEnv && out.env_h ? envValues(out.env_h) : null;
+    const envN = useEnv && out.env_n ? envValues(out.env_n) : null;
     const [h, z] = VP.spectral(harm, noise, envH, envN, params, T); // テンション・ジェンダー・響き
     wav = VP.branchMix(h, z, uvHard, params, cons); // 枝ごとの音量（ブレシネスなど）
     if (g !== 1) for (let i = 0; i < wav.length; i++) wav[i] = wav[i] * g;

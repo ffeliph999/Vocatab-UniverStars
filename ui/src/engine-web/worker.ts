@@ -47,6 +47,9 @@ function loadOrt(useGpu: boolean): boolean {
       // 大きい配列は写さずに渡す（どれも合成のたびに新しく作ったもので、エンジン側には残らない）
       const tr = [res.wav, res.mel_in, res.mel_out, res.mel_plain].filter((a): a is Float32Array => !!a).map((a) => a.buffer);
       post({ type: "result", id: m.id, result: res }, tr);
+    } else if (m.type === "restore") {
+      // 待機から起こされた直後: 画面が持っている解析の結果を取り置きへ戻す（client.ts の wake）
+      post({ type: "result", id: m.id, result: { restored: engine.restore(m.entries) } });
     }
   } catch (err) {
     post({ type: "error", id: m.id, error: err instanceof Error ? err.message : String(err) });

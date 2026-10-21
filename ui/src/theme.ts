@@ -22,10 +22,13 @@ export const MEL_MAPS: Record<MelMapKey, { label: string; stops: string[] }> = {
 interface Settings {
   accent: string;
   melMap: MelMapKey;
+  /** エンジンの計算に GPU（WebGPU）を使うか。既定はオフ（Safari では WebGPU 入りの部品を読むだけで読み込み直しが起きる。
+   *  Chrome では F0 と NSF-HiFiGAN が速くなる）。変えたら画面の読み込み直しで効く */
+  gpu: boolean;
 }
 
 const KEY = "svs-editor-settings";
-let settings: Settings = { accent: DEFAULT_ACCENT, melMap: "fuji" };
+let settings: Settings = { accent: DEFAULT_ACCENT, melMap: "fuji", gpu: false };
 const listeners: Array<() => void> = [];
 
 export function loadSettings(): void {
@@ -33,6 +36,7 @@ export function loadSettings(): void {
     const s = JSON.parse(localStorage.getItem(KEY) ?? "{}") as Partial<Settings>;
     if (s.accent && /^#[0-9a-f]{6}$/i.test(s.accent)) settings.accent = s.accent.toLowerCase();
     if (s.melMap && s.melMap in MEL_MAPS) settings.melMap = s.melMap;
+    if (typeof s.gpu === "boolean") settings.gpu = s.gpu;
   } catch {
     // 読めなければ既定のまま
   }
@@ -49,6 +53,13 @@ function save(): void {
 
 export const getAccent = (): string => settings.accent;
 export const getMelMap = (): MelMapKey => settings.melMap;
+export const getGpu = (): boolean => settings.gpu;
+
+/** GPU を使うか（次に画面を読み込み直したときから効く。URL の ?gpu=1・?gpu=0 はこれより優先） */
+export function setGpu(on: boolean, persist = true): void {
+  settings.gpu = on;
+  if (persist) save();
+}
 
 /** persist = false: 保存しない（画面の確認用。使う人の設定を変えないため） */
 export function setAccent(hex: string, persist = true): void {

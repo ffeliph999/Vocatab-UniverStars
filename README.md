@@ -17,6 +17,11 @@ python -m http.server 8097          # このフォルダを配る（どの静的
 手元の Python のエンジン（`engine/server.py`）も残してあり、`python engine/server.py` で開いた画面に
 `?engine=server` を付けると、そちらで合成する（ブラウザ版との照らし合わせ用）。
 
+計算は既定で CPU（WASM）。設定の「GPU で計算する」か `?gpu=1` で WebGPU（F0 と NSF-HiFiGAN が速くなる。Chrome 向けの実験的な
+もの。Safari では WebGPU 入りの部品を読むだけでページの読み込み直しが起きるので使わない）。`?gpu=0` で強制的に CPU。
+しばらく（既定 180 秒、`?idle=<秒>`）操作が無いとエンジンは Worker ごと手放して待機し、次の編集で起きる（解析の結果は画面が
+持っているので解析し直さない）。
+
 ## 中身
 
 | 場所 | 役目 |
@@ -56,5 +61,14 @@ ln の単位。波形で平均 5e-5）。`python tools/run_e2e.py --model-only s
 
 ## メモリと速さの目安
 
-MacBook Air（M 系、Chrome、1 スレッド）で、7.8 秒の句の合成が約 2.3 秒、ページのメモリは約 560 MB
-（`research/experiment/web_ort_bench` の計測）。パソコンのブラウザを想定している。
+MacBook Air（M 系、16 GB、CPU のみ・1 スレッド）での計測（`research/experiment/web_ort_bench`）。パソコンのブラウザを想定している。
+
+- 1 句（7.8 秒）のリテイク: Chrome で約 3.3 秒、Safari で約 3.5〜4 秒（F0 0.6 秒 + 音響 1.1 秒 + NHVSing 1.2 秒）。
+  NSF-HiFiGAN は CPU だと 1 句 13 秒かかるので、GPU 無しでは NHVSing 向き
+- メモリ: 描画後のページは物理フットプリント約 470 MB（Chrome）・約 490 MB（Safari）。取り置きはバイト数で区切る
+  （音響 32 MB・ボコーダ 128 MB、同じ句の変種は 3 つまで）ので、リテイクを 20 回続けても WASM のメモリは 203 MB で一定。
+  待機に入ると Worker ごと手放して約 160 MB（Chrome）・約 80 MB（Safari）になり、次の編集で約 4 秒で起きる
+  （変わっていない句は解析も合成もし直さない）
+- 長い句: 音響モデルの倍音の足し合わせを ONNX の `Loop` に畳んである（`tools/acoustic_loop.py`。出力はビット単位で同じ）ので、
+  音響モデルのピークメモリは 7.8 秒の句で +80 MB、30 秒の句で +290 MB（展開したままだと +385 MB・+1.5 GB。手元の
+  onnxruntime での実測）。ボコーダは句を区切らずそのまま通す
