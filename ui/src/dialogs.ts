@@ -156,7 +156,8 @@ export function openSettingsDialog(onLang: (l: Lang) => void = () => undefined):
         <button class="melmap${k === mm ? " on" : ""}" data-k="${k}"><span class="mm-bar" style="background:${melGradient(k)}"></span>
           <span class="mm-name">${MEL_MAPS[k].label}</span></button>`).join("")}</div>
       <div class="dlg-sub">${t("エンジン")}</div>
-      <label class="check"><input id="gpu-on" type="checkbox"> ${t("GPU で計算する（実験的・Chrome 向け。変更は読み込み直しで反映）")}</label>`;
+      <label class="check" id="gpu-label"><input id="gpu-on" type="checkbox"> ${t("GPU で計算する（実験的・Chrome 向け。変更は読み込み直しで反映）")}</label>
+      <div class="check-note" id="gpu-note" hidden></div>`;
     for (const b of body.querySelectorAll<HTMLButtonElement>("[data-lang]")) {
       b.addEventListener("click", () => {
         if (b.dataset.lang !== getLang()) onLang(b.dataset.lang as Lang);
@@ -176,6 +177,30 @@ export function openSettingsDialog(onLang: (l: Lang) => void = () => undefined):
     const gpu = body.querySelector<HTMLInputElement>("#gpu-on")!;
     gpu.checked = getGpu();
     gpu.addEventListener("change", () => setGpu(gpu.checked));
+    // 使えない環境では押せなくし（灰色）、理由を下に出す。エンジンも同じ条件で GPU を使わない（worker.ts の loadOrt）
+    void gpuUnavailable().then((why) => {
+      if (!why || !gpu.isConnected) return;
+      gpu.disabled = true;
+      gpu.checked = false;
+      body.querySelector("#gpu-label")!.classList.add("disabled");
+      const note = body.querySelector<HTMLElement>("#gpu-note")!;
+      note.textContent = why;
+      note.hidden = false;
+    });
   };
   render();
+}
+
+/** GPU（WebGPU）がこのブラウザで使えなければ、その理由。使えれば null */
+async function gpuUnavailable(): Promise<string | null> {
+  const ua = navigator.userAgent;
+  if (/AppleWebKit/.test(ua) && !/Chrome|Chromium|Edg\//.test(ua)) return t("Safari では使えません（WebGPU 入りの部品を読むとページが読み込み直されるため）");
+  const g = (navigator as any).gpu;
+  if (!g) return t("このブラウザは WebGPU に対応していません");
+  try {
+    if (await g.requestAdapter()) return null;
+  } catch {
+    // 下へ
+  }
+  return t("この環境では GPU を使えません（WebGPU の準備ができません）");
 }

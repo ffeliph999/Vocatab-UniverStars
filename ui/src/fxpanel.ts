@@ -513,52 +513,269 @@ export class FxPanel {
   }
 
   // ── リバーブ ──────────────────────────────
+  // 「残響の形」: 響きが時間とともにどう減っていくか（fx.ts の reverbIR と同じ式）を描き、その上の 3 つの点を動かす。
+  //   始まり（下の左の点、左右）= プリディレイ、量（山の点、上下）= ドライ/ウェット、長さ（下の右の点、左右）= 残響の長さ
   private renderReverb(): void {
     const r = this.fx.reverb;
-    const sec = this.block(t("リバーブ"), () => r.on, (v) => { r.on = v; });
-    const sel = document.createElement("select");
-    sel.className = "fx-select";
-    for (const [k, p] of Object.entries(REVERB_PRESETS)) {
-      sel.insertAdjacentHTML("beforeend", `<option value="${k}">${t("{name}（{sec} 秒）", { name: p.label, sec: p.decay })}</option>`);
-    }
-    sel.value = r.preset in REVERB_PRESETS ? r.preset : "hall";
-    const box = document.createElement("div");
-    sel.addEventListener("change", () => {
-      // 種類を選ぶと、つまみもその種類らしい値にする（その後で好みに回せる）
+    const sec = this.block(t("リバーブ"), () => r.on, (v) => { r.on = v; draw(); });
+    const preset = () => REVERB_PRESETS[r.preset] ?? REVERB_PRESETS.hall;
+    // 種類: 選ぶと 3 つの値がその種類らしい値になる（その後で点を動かせる）
+    const seg = document.createElement("div");
+    seg.className = "seg";
+    const segButtons = () => {
+      seg.innerHTML = "";
+      for (const [k, p] of Object.entries(REVERB_PRESETS)) {
+        const b = document.createElement("button");
+        b.textContent = p.label;
+        b.classList.toggle("on", k === r.preset || (!(r.preset in REVERB_PRESETS) && k === "hall"));
+        b.addEventListener("click", () => {
+          this.begin();
+          r.preset = k as ReverbPreset;
+          r.decay = p.decay;
+          r.preDelay = p.preDelay;
+          r.wet = p.wet;
+          this.end();
+          segButtons();
+          draw();
+          this.changed();
+        });
+        seg.appendChild(b);
+      }
+    };
+    sec.appendChild(seg);
+    const cv = document.createElement("canvas");
+    cv.className = "fx-graph";
+    sec.appendChild(cv);
+    const readout = document.createElement("div");
+    readout.className = "eq-readout";
+    sec.appendChild(readout);
+    const W = 260;
+    const H = 130;
+    const TOP = 8;
+    const AXIS = 13; // 時間の目盛りの段
+    const BOT = H - AXIS;
+    const TMAX = 8; // 残響の長さの上限（秒）
+    const LP = 8;
+    const PW = W - LP - 8;
+    const DB = 60; // 縦軸 0〜−60 dB
+    const dpr = window.devicePixelRatio || 1;
+    cv.width = W * dpr;
+    cv.height = H * dpr;
+    cv.style.width = "100%";
+    cv.style.height = `${H}px`;
+    const ctx = cv.getContext("2d")!;
+    // 横軸は時間の平方根（プリディレイの数十 ms と、数秒の尾を同じ幅に収める）
+    const tx = (s: number) => LP + Math.sqrt(Math.max(0, s) / TMAX) * PW;
+    const xt = (x: number) => TMAX * Math.max(0, (x - LP) / PW) ** 2;
+    const dy = (db: number) => TOP + (Math.min(DB, Math.max(0, -db)) / DB) * (BOT - TOP);
+    const yd = (y: number) => -((y - TOP) / (BOT - TOP)) * DB;
+    const toDb = (a: number) => 20 * Math.log10(Math.max(1e-6, a));
+    /** 尾の包絡（reverbIR と同じ: 立ち上がり × 指数の減衰）。始まりからの秒 → 振幅（量 1 のとき） */
+    const env = (s: number) => (1 - Math.exp(-s / preset().build)) * Math.exp((-6.9 * s) / Math.max(0.05, r.decay));
+    /** 山（包絡がいちばん大きい所）の、始まりからの秒と振幅 */
+    const peak = () => {
+      let best = 0;
+      let bs = 0;
+      const n = 200;
+      const span = Math.min(r.decay, preset().build * 10 + 0.05);
+      for (let i = 1; i <= n; i++) {
+        const s = (i / n) * span;
+        const v = env(s);
+        if (v > best) [best, bs] = [v, s];
+      }
+      return { s: bs, a: best };
+    };
+    const pts = (): Array<[number, number]> => {
+      const pre = r.preDelay / 1000;
+      const pk = peak();
+      return [[tx(pre), BOT], [tx(pre + pk.s), dy(toDb(r.wet * pk.a))], [tx(pre + r.decay), BOT]];
+    };
+    let hoverPt = -1;
+    let dragging = -1;
+    const draw = () => {
+      const scale = cv.clientWidth / W || 1;
+      ctx.setTransform(dpr * scale, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = cssVar("--pr-bg");
+      ctx.fillRect(0, 0, W, H);
+      // 目盛り（時間と、−20・−40 dB）
+      ctx.lineWidth = 1;
+      ctx.font = "8.5px 'Hiragino Sans', sans-serif";
+      ctx.textAlign = "center";
+      for (const s of [0.1, 0.5, 1, 2, 4, 8]) {
+        const x = Math.round(tx(s)) + 0.5;
+        ctx.strokeStyle = cssVar(s === 1 ? "--grid-bar" : "--grid-beat");
+        ctx.beginPath();
+        ctx.moveTo(x, TOP);
+        ctx.lineTo(x, BOT);
+        ctx.stroke();
+        ctx.fillStyle = cssVar(s === 1 ? "--text" : "--muted");
+        ctx.fillText(s === 8 ? "8 s" : String(s), Math.min(x, W - 9), H - 3);
+      }
+      ctx.strokeStyle = cssVar("--grid-beat");
+      ctx.globalAlpha = 0.6;
+      for (const db of [-20, -40]) {
+        const y = Math.round(dy(db)) + 0.5;
+        ctx.beginPath();
+        ctx.moveTo(LP, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = cssVar("--grid-bar");
+      ctx.beginPath();
+      ctx.moveTo(LP, BOT + 0.5);
+      ctx.lineTo(W, BOT + 0.5);
+      ctx.stroke();
+      const on = r.on;
+      const pre = r.preDelay / 1000;
+      // 直接音（0 秒の縦線。リバーブを足すと少し下げる。fx.ts の dry と同じ）
+      ctx.strokeStyle = cssVar("--text");
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(LP, BOT);
+      ctx.lineTo(LP, dy(toDb(on ? 1 - r.wet * 0.5 : 1)));
+      ctx.stroke();
+      // 初期反射（種類ごとの並び。細い縦線）
+      ctx.strokeStyle = cssVar("--muted");
+      ctx.lineWidth = 1;
+      for (const [ms, g] of preset().early) {
+        const x = Math.round(tx(pre + ms / 1000)) + 0.5;
+        ctx.beginPath();
+        ctx.moveTo(x, BOT);
+        ctx.lineTo(x, dy(toDb(r.wet * g)));
+        ctx.stroke();
+      }
+      // 残響の尾（dB。始まりから、−60 dB に届く長さの所まで）
+      const n = 160;
+      ctx.beginPath();
+      ctx.moveTo(tx(pre), BOT);
+      for (let i = 1; i <= n; i++) {
+        const s = r.decay * (i / n) ** 2; // 頭のほうを細かく
+        ctx.lineTo(tx(pre + s), dy(toDb(r.wet * env(s))));
+      }
+      ctx.lineTo(tx(pre + r.decay), BOT);
+      ctx.closePath();
+      ctx.fillStyle = cssVar(on ? "--accent" : "--muted");
+      ctx.globalAlpha = 0.18;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = cssVar(on ? "--accent" : "--muted");
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+      // 3 つの点（数字は出さない。値は下の 1 行）
+      const p = pts();
+      const labels = [t("始まり"), t("量"), t("長さ")];
+      p.forEach(([x, y], i) => {
+        const hot = i === dragging || (dragging < 0 && i === hoverPt);
+        ctx.beginPath();
+        ctx.arc(x, y, hot ? 6 : 5, 0, Math.PI * 2);
+        if (i === 1) {
+          ctx.fillStyle = cssVar(on ? "--accent" : "--muted");
+          ctx.fill();
+        } else {
+          ctx.fillStyle = cssVar("--pr-bg");
+          ctx.fill();
+          ctx.strokeStyle = cssVar(on ? "--accent" : "--muted");
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+        if (hot && i === 1) {
+          ctx.strokeStyle = cssVar("--text");
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+        ctx.fillStyle = cssVar(hot ? "--text" : "--muted");
+        if (i === 0) {
+          ctx.textAlign = "left";
+          ctx.fillText(`${labels[0]} ↔`, x + 8, BOT - 6);
+        } else if (i === 1) {
+          ctx.textAlign = "left";
+          ctx.fillText(`${labels[1]} ↕`, x + 9, Math.max(TOP + 8, y - 4));
+        } else {
+          ctx.textAlign = "right";
+          ctx.fillText(`${labels[2]} ↔`, x - 8, BOT - 6);
+        }
+      });
+      ctx.textAlign = "left";
+      readout.textContent = t("長さ {d} 秒 · 量 {w} % · 始まり {p} ms",
+        { d: r.decay.toFixed(1), w: Math.round(r.wet * 100), p: Math.round(r.preDelay) });
+    };
+    const local = (e: MouseEvent) => {
+      const rc = cv.getBoundingClientRect();
+      return [((e.clientX - rc.left) / rc.width) * W, e.clientY - rc.top];
+    };
+    const nearest = (x: number, y: number) => {
+      let best = -1;
+      let bd = 12;
+      pts().forEach(([px, py], i) => {
+        const d = Math.hypot(px - x, py - y);
+        if (d < bd) [best, bd] = [i, d];
+      });
+      return best;
+    };
+    const apply = (i: number, x: number, y: number) => {
+      if (i === 0) r.preDelay = Math.round(Math.max(0, Math.min(200, xt(x) * 1000)));
+      else if (i === 2) r.decay = Math.round(Math.max(0.3, Math.min(TMAX, xt(x) - r.preDelay / 1000)) * 10) / 10;
+      else {
+        // 山の高さ = 量 × 包絡の山。下の縁まで下げると 0
+        const db = yd(y) - toDb(peak().a);
+        r.wet = y >= BOT - 1 ? 0 : Math.round(Math.max(0, Math.min(1, 10 ** (db / 20))) * 100) / 100;
+      }
+    };
+    cv.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
+      const [x, y] = local(e);
+      const i = nearest(x, y);
+      if (i < 0) return;
+      cv.setPointerCapture(e.pointerId);
+      dragging = i;
       this.begin();
-      const p = REVERB_PRESETS[sel.value as ReverbPreset];
-      r.preset = sel.value as ReverbPreset;
-      r.decay = p.decay;
-      r.preDelay = p.preDelay;
-      r.wet = p.wet;
-      this.end();
-      drawKnobs();
+      draw();
+    });
+    cv.addEventListener("pointermove", (e) => {
+      const [x, y] = local(e);
+      if (dragging < 0) {
+        const h = nearest(x, y);
+        cv.style.cursor = h < 0 ? "default" : h === 1 ? "ns-resize" : "ew-resize";
+        if (h !== hoverPt) {
+          hoverPt = h;
+          draw();
+        }
+        return;
+      }
+      apply(dragging, x, y);
+      draw();
       this.changed();
     });
-    sec.appendChild(sel);
-    sec.appendChild(box);
-    const drawKnobs = () => {
-      box.innerHTML = "";
-      this.knobKnobs(box, r);
-    };
-    drawKnobs();
-    sec.insertAdjacentHTML("beforeend", `<p class="hint">${t("種類を選ぶと、つまみがその種類の値になります。")}</p>`);
-  }
-
-  private knobKnobs(box: HTMLElement, r: TrackFx["reverb"]): void {
-    const p = REVERB_PRESETS[r.preset] ?? REVERB_PRESETS.hall;
-    // つまみの真上（ダブルクリックで戻る値）は、選んでいる種類の値
-    this.knobRow(box, [
-      { label: t("プリディレイ"), el: knob({ title: t("プリディレイ"), min: 0, max: 200, def: p.preDelay, get: () => r.preDelay,
-        set: (v) => { r.preDelay = Math.round(v); this.changed(); }, fmt: (v) => `${v.toFixed(0)} ms`,
-        onStart: this.begin, onEnd: this.end }) },
-      { label: t("残響の長さ"), el: knob({ title: t("残響の長さ"), min: 0.3, max: 8, def: p.decay, get: () => r.decay,
-        set: (v) => { r.decay = Math.round(v * 10) / 10; this.changed(); }, fmt: (v) => `${v.toFixed(1)} s`,
-        onStart: this.begin, onEnd: this.end }) },
-      { label: t("ドライ/ウェット"), el: knob({ title: t("ドライ/ウェット"), min: 0, max: 1, def: p.wet, get: () => r.wet,
-        set: (v) => { r.wet = Math.round(v * 100) / 100; this.changed(); }, fmt: (v) => `${Math.round(v * 100)} %`,
-        onStart: this.begin, onEnd: this.end }) },
-    ]);
+    cv.addEventListener("pointerleave", () => {
+      if (hoverPt >= 0 && dragging < 0) {
+        hoverPt = -1;
+        draw();
+      }
+    });
+    cv.addEventListener("pointerup", () => {
+      if (dragging >= 0) this.end();
+      dragging = -1;
+      draw();
+    });
+    cv.addEventListener("dblclick", (e) => {
+      // 点をダブルクリック: その値を種類の値に戻す
+      const [x, y] = local(e);
+      const i = nearest(x, y);
+      if (i < 0) return;
+      const p = preset();
+      this.begin();
+      if (i === 0) r.preDelay = p.preDelay;
+      else if (i === 1) r.wet = p.wet;
+      else r.decay = p.decay;
+      this.end();
+      draw();
+      this.changed();
+    });
+    segButtons();
+    sec.insertAdjacentHTML("beforeend", `<p class="hint">${t("点をドラッグ: 始まり（プリディレイ）・量（ドライ/ウェット）・長さ（残響が消えるまで）。点をダブルクリックで種類の値に戻す。")}</p>`);
+    requestAnimationFrame(draw);
   }
 }
 
