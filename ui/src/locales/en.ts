@@ -147,6 +147,7 @@ export const en: Record<string, string> = {
   "エンジン未接続（モック）": "Engine not connected (mock)",
   "描画中 {done}/{all} 句": "Rendering {done}/{all} phrases",
   "描画済み": "Rendered",
+  "モデルを読み込み中 {p}%（{mb} / {total} MB）": "Loading models {p}% ({mb} / {total} MB)",
   "選択 (1)": "Select (1)",
   "音符を描く (2)": "Draw notes (2)",
   "ピッチのペン (3)": "Pitch pen (3)",

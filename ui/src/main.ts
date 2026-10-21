@@ -162,7 +162,10 @@ function onEngineUpdate(): void {
   } else {
     const all = store.project.tracks.flatMap((tr) => renderer.phrases(tr));
     const done = all.filter((p) => p.status === "済み").length;
-    engineState.textContent = renderer.error ||
+    const pg = renderer.engine.progress; // モデルの読み込み（初回はダウンロード）の進み具合
+    const loading = pg ? t("モデルを読み込み中 {p}%（{mb} / {total} MB）", {
+      p: Math.floor((100 * pg.loaded) / Math.max(1, pg.total)), mb: (pg.loaded / 1e6).toFixed(0), total: (pg.total / 1e6).toFixed(0) }) : "";
+    engineState.textContent = renderer.error || loading ||
       `${renderer.voicebank.name}　${done < all.length ? t("描画中 {done}/{all} 句", { done, all: all.length }) : t("描画済み")}`;
     engineState.classList.toggle("error", !!renderer.error);
   }

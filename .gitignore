@@ -12,3 +12,4 @@ svs_data/
 
 # 照らし合わせの正解（tools/golden/dump_golden.py で作り直せる。約 100 MB）
 ui/test/golden/
+ui/test/e2e.js

@@ -1,5 +1,7 @@
 // 自動の描画: 編集のたびに（少し待ってから）句ごとに解析し、最後の F0 が変わった句だけを合成し直す。
-import { b64, composeF0, type EngineInfo, type EPhrase, fetchInfo, hashF32, phraseParams, unb64 } from "./engine";
+// エンジンは engine-web/client.ts の窓口（既定はブラウザの中、?engine=server で手元の Python）。
+import { composeF0, type EngineInfo, type EPhrase, hashF32, phraseParams } from "./engine";
+import { type EngineClient, makeEngine } from "./engine-web/client";
 import { t as tx } from "./i18n";
 import { activeNotes, type Track } from "./model";
 import type { Store } from "./store";
@@ -56,13 +58,16 @@ export class Renderer {
   error = "";
   /** mel の ② の行がオンか（オンのときだけ、ボイスパラメータを掛けない音の mel も頼む） */
   wantPlain: () => boolean = () => false;
+  readonly engine: EngineClient = makeEngine();
   private busy = false;
   private timer = 0;
 
-  constructor(private store: Store, private onUpdate: () => void) {}
+  constructor(private store: Store, private onUpdate: () => void) {
+    this.engine.onProgress = () => this.onUpdate(); // モデルの読み込みの進み具合
+  }
 
   async init(): Promise<void> {
-    this.info = await fetchInfo();
+    this.info = await this.engine.info();
     this.onUpdate();
     if (this.info) this.schedule(0);
   }
@@ -112,10 +117,6 @@ export class Renderer {
     this.timer = window.setTimeout(() => void this.run(), delay);
   }
 
-  private async post(path: string, body: unknown): Promise<Response> {
-    return fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  }
-
   private async run(): Promise<void> {
     if (this.busy) {
       this.schedule(100); // 走っている途中の編集は、終わってからもう一度
@@ -135,29 +136,28 @@ export class Renderer {
           this.rev++;
           continue;
         }
-        const r = await this.post("/api/analyze", {
-          voicebank: vb, singer: this.singerId(track), bpm: p.bpm, seed: 0,
-          notes: notes.map((n) => ({ id: n.id, onset: n.onset, dur: n.dur, pitch: n.pitch, lyric: n.lyric,
-                                     retake_f0: n.attrs.retakeF0 ?? 0, ph_shift: n.phShift ?? {} })),
-        });
-        if (!r.ok) {
-          this.error = tx("解析に失敗: {e}", { e: await r.text() });
+        let j;
+        try {
+          j = await this.engine.analyze({
+            voicebank: vb, singer: this.singerId(track), bpm: p.bpm, seed: 0,
+            notes: notes.map((n) => ({ id: n.id, onset: n.onset, dur: n.dur, pitch: n.pitch, lyric: n.lyric,
+                                       retake_f0: n.attrs.retakeF0 ?? 0, ph_shift: n.phShift ?? {} })),
+          });
+        } catch (e) {
+          this.error = tx("解析に失敗: {e}", { e: e instanceof Error ? e.message : String(e) });
           this.onUpdate();
           continue;
         }
         this.error = "";
-        const j = await r.json();
         const old = new Map(this.phrases(track).map((q) => [q.key, q]));
-        const list: EPhrase[] = j.phrases.map((q: Record<string, unknown>) => {
-          const prev = old.get(q.key as string);
+        const list: EPhrase[] = j.phrases.map((q) => {
+          const prev = old.get(q.key);
           return {
             key: q.key, noteIds: q.note_ids, startFrame: q.start_frame, nFrames: q.n_frames, phonemes: q.phonemes,
-            plain: unb64(q.plain_log2 as string), vib: unb64(q.vib_log2 as string), uv: unb64(q.uv as string),
-            // 抑揚の土台（古いエンジンには無い。そのときは抑揚の線そのものにして、抑揚の強さを効かせない）
-            base: unb64((q.base_log2 ?? q.plain_log2) as string),
+            plain: q.plain, vib: q.vib, uv: q.uv, base: q.base,
             status: prev?.status ?? "解析済み", f0Hash: prev?.f0Hash, wav: prev?.wav, melIn: prev?.melIn,
             melOut: prev?.melOut,
-          } as EPhrase;
+          };
         });
         this.tracks.set(track.id, list);
         this.rev++;
@@ -184,22 +184,20 @@ export class Renderer {
           if (ph.f0Hash === h && ph.wav && (!plain || ph.melPlain)) continue;
           ph.status = "合成中";
           this.onUpdate();
-          const enc: Record<string, string> = {};
-          for (const k of Object.keys(params)) enc[k] = b64(params[k]);
-          const r = await this.post("/api/synthesize", { voicebank: vb, singer, key: ph.key, f0_log2: b64(log2),
-                                                         vocoder: voc, params: enc, mel_out: true,
-                                                         mel_plain: plain, retake_mel: retakeMel });
-          if (!r.ok) {
+          let j;
+          try {
+            j = await this.engine.synthesize({ voicebank: vb, singer, key: ph.key, f0_log2: log2, vocoder: voc, params,
+                                               mel_out: true, mel_plain: plain, retake_mel: retakeMel });
+          } catch (e) {
             ph.status = "失敗";
-            this.error = tx("合成に失敗: {e}", { e: await r.text() });
+            this.error = tx("合成に失敗: {e}", { e: e instanceof Error ? e.message : String(e) });
             this.onUpdate();
             continue;
           }
-          const j = await r.json();
-          ph.wav = unb64(j.wav);
-          ph.melIn = unb64(j.mel_in);
-          ph.melOut = j.mel_out ? unb64(j.mel_out) : undefined;
-          ph.melPlain = j.mel_plain ? unb64(j.mel_plain) : undefined;
+          ph.wav = j.wav;
+          ph.melIn = j.mel_in;
+          ph.melOut = j.mel_out;
+          ph.melPlain = j.mel_plain;
           ph.f0Hash = h;
           ph.status = "済み";
           this.rev++;

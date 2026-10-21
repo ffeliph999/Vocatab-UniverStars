@@ -86,15 +86,6 @@ export function hashF32(a: Float32Array, extra: string): string {
   return `${h.toString(16)}:${a.length}:${extra}`;
 }
 
-export async function fetchInfo(): Promise<EngineInfo | null> {
-  try {
-    const r = await fetch("/api/info");
-    return r.ok ? ((await r.json()) as EngineInfo) : null;
-  } catch {
-    return null; // 静的なファイルだけで開いたとき（モックとして動く）
-  }
-}
-
 /** 句のフレームごとに、どの音符に属するか（音素の note から）。 */
 export function frameNotes(ph: EPhrase): Int32Array {
   const fn = new Int32Array(ph.nFrames).fill(-1);
