@@ -1,0 +1,11 @@
+# esbuild の出力（ui/src から作り直せる）
+ui/dist/
+.DS_Store
+__pycache__/
+
+# ボイスバンクとボコーダ（重みは公開するリポジトリに入れない。学習データの規約による）
+voicebanks/
+vocoders/
+
+# プロジェクトと楽譜（歌詞・旋律は著作物のことが多いので入れない）
+svs_data/

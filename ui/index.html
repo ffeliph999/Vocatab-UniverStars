@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SVS Editor</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!-- 文言は日本語で書き、data-i18n（中の文字）・data-i18n-title（title）で各言語にする（i18n.ts の translateStatic） -->
+<div id="app">
+  <!-- 左の帯: 名前・ファイル・トラックの一覧・選んでいるトラックの設定 -->
+  <aside id="sidebar">
+    <div class="side-brand">
+      <span class="brand"><span class="logo"></span>SVS Editor<span class="tag" data-i18n="モック">モック</span></span>
+      <button id="btn-settings" class="icon-btn" data-i18n-title="設定（言語・差し色・mel の配色）"></button>
+    </div>
+    <div class="side-file">
+      <button id="btn-file" class="menu-btn" data-i18n="ファイル ▾">ファイル ▾</button>
+      <span id="save-state" class="save-state"></span>
+    </div>
+    <div class="side-head">
+      <span class="lbl" data-i18n="トラック">トラック</span>
+      <button id="btn-add-track" class="icon-btn add-track" data-i18n-title="トラックを足す（歌・伴奏）">＋</button>
+    </div>
+    <div id="track-list"></div>
+    <div id="side-body"></div>
+    <div class="engine-state" data-i18n="エンジン未接続（モック）">エンジン未接続（モック）</div>
+  </aside>
+
+  <!-- 右: ピアノロールのカード -->
+  <main id="main">
+    <section id="card">
+      <div class="card-head">
+        <button id="btn-side" class="icon-btn side-toggle" data-i18n-title="左の帯を畳む・開く"></button>
+        <span class="card-track"><span class="dot" id="cur-dot"></span><b id="cur-name"></b><span id="cur-voice" class="muted"></span></span>
+        <div class="tool-group" id="tools"></div>
+        <div class="tool-group" id="views"></div>
+        <select id="snap" data-i18n-title="スナップ">
+          <option value="auto" selected data-i18n="スナップ 自動">スナップ 自動</option>
+          <option value="1920" data-i18n="1 小節">1 小節</option>
+          <option value="480">1/4</option>
+          <option value="240">1/8</option>
+          <option value="120">1/16</option>
+          <option value="60">1/32</option>
+          <option value="160" data-i18n="1/8 の 3 連">1/8 の 3 連</option>
+          <option value="none" data-i18n="スナップなし">スナップなし</option>
+        </select>
+        <span class="grow"></span>
+        <!-- 再生の操作（ピアノロールに重ならないよう、見出しの帯に置く） -->
+        <div id="transport" class="head-transport">
+          <button id="btn-play" class="icon-btn play" data-i18n-title="再生"></button>
+          <button id="btn-stop" class="icon-btn" data-i18n-title="停止して頭に戻る"></button>
+          <button id="btn-loop" class="icon-btn" data-i18n-title="ループ（次の段階）"></button>
+          <span class="tr-sep"></span>
+          <span class="readout" id="time">00:00.00</span>
+          <span class="readout editable" id="bpm-box" data-i18n-title="クリック: テンポを変える"><span id="bpm">80.00</span><small>BPM</small></span>
+          <span class="readout editable" id="ts" data-i18n-title="クリック: 拍子を変える">4/4</span>
+          <button id="btn-follow" class="icon-btn on" data-i18n-title="再生位置を追う"></button>
+        </div>
+        <span class="grow"></span>
+        <button id="btn-export" class="btn primary" data-i18n-title="WAV に書き出す"></button>
+      </div>
+      <div id="arr-body"><canvas id="arr-canvas"></canvas></div>
+      <div id="arr-resizer" class="hresizer" data-i18n-title="上下にドラッグ: 曲の地図の高さを変える（ダブルクリック: トラックが全部見える高さ）"></div>
+      <div id="pr-wrap">
+        <canvas id="pr-canvas"></canvas>
+        <input id="lyric-input" class="lyric-input" type="text" hidden>
+      </div>
+      <nav id="tabbar"></nav>
+      <div id="bottom-panels"></div>
+      <footer id="status"></footer>
+    </section>
+  </main>
+</div>
+<script type="module" src="dist/app.js"></script>
+</body>
+</html>
