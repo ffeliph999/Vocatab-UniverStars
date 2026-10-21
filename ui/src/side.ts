@@ -118,6 +118,9 @@ export class SidePanel {
   update(): void {
     const connected = !!this.engine?.connected;
     this.fx?.refreshSpectrum();
+    // 「描画の状況」の見出しの要約は、区切りを閉じていても進み具合に合わせて書き直す
+    const rs = this.body.querySelector<HTMLElement>('.acc[data-key="render"] .acc-s');
+    if (rs) rs.textContent = this.renderSummary();
     const ae = document.activeElement;
     if (ae && this.body.contains(ae) && (ae.tagName === "INPUT" || ae.tagName === "SELECT")) return;
     if (this.dragging) this.refresh();
@@ -159,6 +162,7 @@ export class SidePanel {
     head.innerHTML = `<span class="acc-car">${this.open.has(key) ? "▾" : "▸"}</span><span class="acc-t"></span><span class="acc-s"></span>`;
     head.querySelector(".acc-t")!.textContent = title;
     head.querySelector(".acc-s")!.textContent = summary;
+    wrap.dataset.key = key;
     head.addEventListener("click", () => {
       if (this.open.has(key)) this.open.delete(key);
       else this.open.add(key);

@@ -83,8 +83,18 @@ export interface NoiseHook {
   voc?(T: number): Float32Array | null;
 }
 
+/**
+ * モデルごとの計算の場所。GPU（WebGPU）が使えるときだけ、精度が CPU と変わらず速くなるものを GPU で動かす
+ * （research/experiment/web_ort_bench の計測。7.8 秒の句で、F0 は 364 → 60 ms、NSF-HiFiGAN は 8.4 → 1.2 秒、
+ * 出力の差は CPU のときと同じ程度）。音響モデルは GPU だと出力のずれが CPU の約 9 倍（mel の平均 0.01）になり、
+ * NHVSing は GPU のほうが遅いので、どちらも CPU（WASM）で動かす
+ */
+const GPU_MODELS = new Set(["f0", "nsf_hifigan"]);
+
 export class Engine {
   private base = "";
+  private gpu = false; // WebGPU が使えるか（init で調べる）
+  private creating: Promise<unknown> = Promise.resolve(); // セッション作りを 1 つずつにする鎖
   private index!: WebIndex;
   private vbs = new Map<string, VoicebankWeb>();
   private sessions = new Map<string, Promise<any>>();
@@ -98,8 +108,14 @@ export class Engine {
   constructor(private ort: any, private onProgress: (loaded: number, total: number) => void = () => undefined) {}
 
   /** base: svs_editor_browser の頭の URL（web_index.json・voicebanks・vocoders がある所） */
-  async init(base: string, preload = true): Promise<WebIndex> {
+  async init(base: string, preload = true, useGpu = true): Promise<WebIndex> {
     this.base = base;
+    try {
+      const g = (globalThis.navigator as any)?.gpu;
+      this.gpu = useGpu && !!g && !!(await g.requestAdapter()) && !!this.ort.env?.webgpu;
+    } catch {
+      this.gpu = false;
+    }
     this.index = await (await fetch(this.url("web_index.json"))).json();
     for (const v of this.index.voicebanks) this.vbs.set(v.key, await (await fetch(this.url(v.web))).json());
     if (preload) {
@@ -131,13 +147,31 @@ export class Engine {
     this.onProgress(l, t);
   }
 
-  private load(key: string, rel: string, bytes: number): Promise<any> {
+  /** 計算の場所の名前（試験・表示用）: "webgpu" か "wasm" */
+  device(kind: string): string {
+    return this.gpu && GPU_MODELS.has(kind) ? "webgpu" : "wasm";
+  }
+
+  private load(key: string, rel: string, bytes: number, kind: string): Promise<any> {
     let s = this.sessions.get(key);
     if (!s) {
       s = (async () => {
         const data = await fetchCached(this.url(rel), bytes, (l, t) => this.progress(key, l, t));
-        return this.ort.InferenceSession.create(data, { executionProviders: ["wasm"], graphOptimizationLevel: "all",
-                                                        enableMemPattern: false });
+        // セッション作りは 1 つずつ（同時に作ると onnxruntime-web の初期化が 2 回走り、GPU の準備が失敗する）
+        const create = async (): Promise<any> => {
+          const opts = { graphOptimizationLevel: "all", enableMemPattern: false };
+          if (this.device(kind) === "webgpu") {
+            try {
+              return await this.ort.InferenceSession.create(data, { ...opts, executionProviders: ["webgpu"] });
+            } catch (e) {
+              console.warn(`GPU で準備できなかったので CPU で動かす（${kind}）`, e);
+            }
+          }
+          return this.ort.InferenceSession.create(data, { ...opts, executionProviders: ["wasm"] });
+        };
+        const p = this.creating.then(create, create);
+        this.creating = p.catch(() => undefined);
+        return p;
       })();
       s.catch(() => this.sessions.delete(key)); // 失敗したら、次に頼まれたときに読み直す
       this.sessions.set(key, s);
@@ -147,11 +181,11 @@ export class Engine {
 
   private session(vbKey: string, model: "cons_dur" | "f0" | "acoustic"): Promise<any> {
     const vi = this.index.voicebanks.find((v) => v.key === vbKey)!;
-    return this.load(`${vbKey}/${model}`, this.vbs.get(vbKey)!.models[model], vi.bytes[model]);
+    return this.load(`${vbKey}/${model}`, this.vbs.get(vbKey)!.models[model], vi.bytes[model], model);
   }
 
   private vocoderSession(v: VocoderWeb): Promise<any> {
-    return this.load(`voc/${v.key}`, v.onnx, v.bytes);
+    return this.load(`voc/${v.key}`, v.onnx, v.bytes, v.kind);
   }
 
   private async run(sess: any, feeds: Feeds, names?: string[]): Promise<Record<string, Float32Array>> {

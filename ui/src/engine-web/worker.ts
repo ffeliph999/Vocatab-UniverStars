@@ -8,7 +8,7 @@ declare function importScripts(...urls: string[]): void;
 
 const ORT_VERSION = "1.20.1";
 const ORT_BASE = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/`;
-importScripts(`${ORT_BASE}ort.min.js`);
+importScripts(`${ORT_BASE}ort.webgpu.min.js`); // WebGPU 入りの版（GPU が使えないときは WASM で動く。core.ts の GPU_MODELS）
 ort.env.wasm.wasmPaths = ORT_BASE;
 // 複数のスレッドは cross-origin isolated のときだけ使える（GitHub Pages では普通は 1 スレッド）
 ort.env.wasm.numThreads = (self as any).crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 1) : 1;
