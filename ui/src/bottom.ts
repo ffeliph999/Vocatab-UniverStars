@@ -4,7 +4,6 @@ import { cssVar, HiDpiCanvas, requestDraw } from "./canvas";
 import type { Derived, PhoneSeg } from "./derive";
 import { drawTimeGrid } from "./grid";
 import { t } from "./i18n";
-import { ICONS } from "./icons";
 import { secPerTick } from "./model";
 import type { Store } from "./store";
 import { KEY_W, type View } from "./view";
@@ -124,7 +123,6 @@ export class PhonemePanel {
 interface PanelDef {
   key: string;
   label: string;
-  icon: string;
   el: HTMLElement;
 }
 
@@ -138,12 +136,12 @@ export class BottomPanels {
   private defs: PanelDef[] = [];
   constructor(private container: HTMLElement, private tabbar: HTMLElement, private onLayout: () => void) {}
 
-  add(key: string, label: string, icon: string, el: HTMLElement, open: boolean, size?: SizeOpts): void {
+  add(key: string, label: string, el: HTMLElement, open: boolean, size?: SizeOpts): void {
     el.classList.add("bpanel");
     el.hidden = !open;
     if (size) this.addHandle(el, size);
     this.container.appendChild(el);
-    this.defs.push({ key, label, icon, el });
+    this.defs.push({ key, label, el });
     this.renderTabs();
   }
 
@@ -175,7 +173,7 @@ export class BottomPanels {
     for (const d of this.defs) {
       const b = document.createElement("button");
       b.className = "tab" + (d.el.hidden ? "" : " on");
-      b.innerHTML = `${ICONS[d.icon] ?? ""}<span>${d.label}</span>`;
+      b.innerHTML = `<span>${d.label}</span>`;
       b.addEventListener("click", () => {
         d.el.hidden = !d.el.hidden;
         this.renderTabs();

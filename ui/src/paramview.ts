@@ -89,7 +89,7 @@ export class ParamPanel {
         ${this.tabs.length > 1 ? `<button class="pp-close" title="${tr("この曲線を閉じる")}">✕</button>` : ""}
       </div>`;
     }).join("");
-    this.head.innerHTML = `${ICONS.param}<div class="pp-tabs">${tabHtml}
+    this.head.innerHTML = `<div class="pp-tabs">${tabHtml}
         ${this.tabs.length < PARAMS.length ? `<button class="icon-btn pp-add" title="${tr("曲線を足す")}">＋</button>` : ""}</div>
       <div class="tool-group">
         <button class="icon-btn ${this.tool === "pen" ? "active" : ""}" data-tool="pen" title="${tr("鉛筆")}">${ICONS.draw}</button>

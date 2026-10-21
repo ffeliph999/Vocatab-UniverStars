@@ -62,15 +62,15 @@ pr.closePop = () => pop.close();
 // タブでパネルを開け閉めしたとき: mel は閉じている間は計算しないので、開いたら計算し直す
 const bottom = new BottomPanels($("bottom-panels"), $("tabbar"), () => mel.schedule());
 const params = new ParamPanel(store, view, () => pr.snapTicks(), hint, () => derived().phones);
-bottom.add("param", t("パラメータ"), "param", params.el, true, { min: () => 32 + 40 });
+bottom.add("param", t("パラメータ"), params.el, true, { min: () => 32 + 40 });
 const phonWrap = document.createElement("div");
 phonWrap.style.height = "84px";
 const phonCanvas = document.createElement("canvas");
 phonWrap.appendChild(phonCanvas);
-bottom.add("phoneme", t("音素のタイミング"), "phoneme", phonWrap, true, { min: () => 34, max: 200 });
+bottom.add("phoneme", t("音素のタイミング"), phonWrap, true, { min: () => 34, max: 200 });
 const phon = new PhonemePanel(store, view, derived, phonCanvas, () => pr.snapTicks(), hint);
 const mel = new MelPanel(store, view, derived, () => pr.snapTicks());
-bottom.add("mel", "mel", "mel", mel.el, true,
+bottom.add("mel", "mel", mel.el, true,
            { min: () => mel.minHeight(), max: 900, onResize: (h) => mel.onResize(h) });
 
 // ── 左の帯（選んでいるトラックの設定）・書き出し・設定 ──────────────
