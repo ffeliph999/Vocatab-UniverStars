@@ -68,7 +68,17 @@ export function loadCase(name: string): any {
   return resolve(JSON.parse(readFileSync(join(dir, "case.json"), "utf-8")), dir);
 }
 
-export const CASES = ["sakura", "mixed", "params"];
+export const CASES = ["sakura", "mixed", "params", "korean"];
+
+// ケースごとのボイスバンク（tools/golden/dump_golden.py のケースの "vb"。無ければ日本語）
+const CASE_VB: Record<string, string> = { korean: "leapsinger_ko_mechol_sodasoo" };
+const vbCache = new Map<string, any>();
+/** そのケースを書き出したボイスバンクの web.json */
+export function vbFor(name: string): any {
+  const key = CASE_VB[name] ?? "leapsinger_ja_3singer";
+  if (!vbCache.has(key)) vbCache.set(key, JSON.parse(readRepo(`voicebanks/${key}/web.json`)));
+  return vbCache.get(key);
+}
 
 let failures = 0;
 /** 2 つの数の並びを比べ、最大の差を出す。|差| ≤ atol + rtol·|正解| をすべて満たせば合格 */

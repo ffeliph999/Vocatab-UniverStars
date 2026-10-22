@@ -12,6 +12,8 @@ export class PhoneSet {
   readonly ph2id: Map<string, number>;
   readonly score: PhoneSetData["score"];
   readonly mora: Record<string, string[]>;
+  readonly finalConsonants: boolean;
+  readonly g2p: string | null;
 
   constructor(readonly d: PhoneSetData) {
     this.lang = d.lang;
@@ -24,6 +26,8 @@ export class PhoneSet {
     this.ph2id = new Map(d.phonemes.map((p, i) => [p, i]));
     this.score = d.score;
     this.mora = d.mora;
+    this.finalConsonants = !!d.final_consonants;
+    this.g2p = d.g2p ?? null;
   }
 
   /** 表記ゆれの吸収（大小文字・ストレス数字）。 */

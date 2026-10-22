@@ -4,9 +4,7 @@ import { acousticFeeds, finishSynth, melPostprocess, nhvFeeds, nsfFeeds, roundFl
 import * as VP from "../src/engine-web/voiceparams";
 import { wavToMel } from "../src/engine-web/melspec";
 import type { Feed, VoicebankWeb } from "../src/engine-web/types";
-import { CASES, close, done, loadCase, readRepo, same } from "./golden";
-
-const vb = JSON.parse(readRepo("voicebanks/leapsinger_ja_3singer/web.json")) as VoicebankWeb;
+import { CASES, close, done, loadCase, same, vbFor } from "./golden";
 
 const num = (f: Feed): number[] => Array.from(f.data as ArrayLike<number | bigint>, (x) => Number(x));
 const ms = (t0: number): string => `${(performance.now() - t0).toFixed(0)} ms`;
@@ -39,6 +37,7 @@ const ms = (t0: number): string => `${(performance.now() - t0).toFixed(0)} ms`;
 }
 
 for (const name of CASES) {
+  const vb = vbFor(name) as VoicebankWeb;
   const c = loadCase(name);
   c.phrases.forEach((ph: any, pi: number) => {
     const r = ph.result;

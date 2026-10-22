@@ -28,6 +28,8 @@ def phoneset_json(ps, mora: dict) -> dict:
     return {"lang": ps.lang, "phonemes": list(ps.phonemes), "nuclei": sorted(ps.nuclei), "vowels": sorted(ps.vowels),
             "vowel_normalize": dict(ps.vowel_normalize), "silence": sorted(ps.silence), "consonants": list(ps.consonants),
             "sil_map": dict(ps.sil_map), "case_fold": ps.case_fold, "strip_stress_digits": ps.strip_stress_digits,
+            # 韓国語: 句末の終声も子音の長さを予測する・規則の G2P（ui/src/engine-web/g2p_ko.ts）
+            "final_consonants": bool(getattr(ps, "final_consonants", False)), "g2p": getattr(ps, "g2p", None),
             "score": dict(ps.score), "mora": mora}
 
 

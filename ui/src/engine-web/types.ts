@@ -13,6 +13,10 @@ export interface PhoneSetData {
   sil_map: Record<string, string>;
   case_fold: "lower" | "upper" | null;
   strip_stress_digits: boolean;
+  /** 後ろに核の無い子音（句末・休みの前の終声）も子音の長さのモデルで予測するか（韓国語）。古い web.json には無い */
+  final_consonants?: boolean;
+  /** 規則の G2P（"ko" = g2p_ko.ts）。無ければモーラ表だけ。古い web.json には無い */
+  g2p?: string | null;
   score: { rest_lyrics?: string[]; melisma_lyrics?: string[]; melisma_vowel?: string; [k: string]: unknown };
   mora: Record<string, string[]>; // かな → 音素の列
 }

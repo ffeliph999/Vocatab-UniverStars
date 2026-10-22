@@ -5,7 +5,7 @@
   配列は {"$dtype": "float32", "$shape": [...], "$bin": "x.bin"} か {"$dtype": ..., "$shape": ..., "$data": [...]}。
   int64 は int32 に縮めて書く（$dtype は元の型のまま）。bool は uint8。
 
-使い方: python tools/golden/dump_golden.py   （svs_editor_browser のどこからでも）
+使い方: python tools/golden/dump_golden.py [ケースの名前 ...]   （svs_editor_browser のどこからでも。名前を省くと全部）
 """
 from __future__ import annotations
 
@@ -80,7 +80,7 @@ def snap(x):
 
 def main():
     vbs, vocs = scan(ROOT)
-    vb = next(iter(vbs.values()))
+    vb = next(iter(vbs.values()))       # 既定のボイスバンク（日本語）。ケースの "vb" で替える
     eng = P.PrettyPitchLeapSinger(vb)
     nhv = next(v for v in vocs.values() if v.kind == "nhvsing")
     nsf = next((v for v in vocs.values() if v.kind == "nsf_hifigan"), None)
@@ -132,12 +132,17 @@ def main():
                                "phonemes": list(seq.phonemes)}
         return out
     P._apply_shifts = apply_wrap
-    wrap_attr(eng.s_cons, "run", run_capture("cons_run"))
-    wrap_attr(eng.s_f0, "run", run_capture("f0_run"))
-    wrap_attr(eng.s_ac, "run", run_capture("ac_run"))
-    wrap_attr(eng.vocoder(nhv), "run", run_capture("voc_run"))
-    if nsf:
-        wrap_attr(eng.vocoder(nsf), "run", run_capture("voc_run"))
+
+    def wrap_sessions(e):
+        wrap_attr(e.s_cons, "run", run_capture("cons_run"))
+        wrap_attr(e.s_f0, "run", run_capture("f0_run"))
+        wrap_attr(e.s_ac, "run", run_capture("ac_run"))
+        wrap_attr(e.vocoder(nhv), "run", run_capture("voc_run"))
+        if nsf:
+            wrap_attr(e.vocoder(nsf), "run", run_capture("voc_run"))
+        return e
+
+    engines = {vb.key: wrap_sessions(eng)}   # ボイスバンクごとのエンジン（ホスト側の処理のモジュールは共通）
 
     lyr = ["さ", "く", "ら", "さ", "く", "ら", "や", "よ", "い", "の", "そ", "ら"]
     pit = [69, 69, 71, 69, 69, 71, 69, 71, 72, 71, 69, 65]
@@ -154,15 +159,32 @@ def main():
         {"id": 9, "onset": 6240, "dur": 480, "pitch": 68, "lyric": "しょ"},
         {"id": 10, "onset": 6720, "dur": 480, "pitch": 69, "lyric": "sh"},
     ]
+    # 韓国語（G2P・句末の終声）: 音符をまたぐ連音（음 악）、伸ばしへの終声の移動（밤 - -）、鼻音化（국 물）、
+    # 濃音化（학 교）、音素の直書き、短い休符で G2P の並びが切れる所（좋 | 다）、1 音符に 2 音節（사랑）、
+    # 長い休符の後の次の句の流音化（신 라）と句末の二重パッチム（닭）
+    ko_lyr = [(0, 480, 55, "음"), (480, 480, 57, "악"), (960, 480, 55, "밤"), (1440, 480, 57, "-"), (1920, 480, 59, "-"),
+              (2400, 480, 57, "국"), (2880, 480, 55, "물"), (3360, 480, 52, "학"), (3840, 480, 55, "교"),
+              (4320, 480, 57, "s a L"), (4800, 480, 59, "좋"), (5520, 480, 57, "다"), (6000, 960, 55, "사랑"),
+              (8880, 480, 52, "신"), (9360, 480, 55, "라"), (9840, 720, 57, "닭")]
+    korean = [{"id": i + 1, "onset": o, "dur": d, "pitch": p, "lyric": l} for i, (o, d, p, l) in enumerate(ko_lyr)]
     cases = [
         {"name": "sakura", "bpm": 100, "notes": sakura, "singer": 0, "seed": 0},
         {"name": "mixed", "bpm": 120, "notes": mixed, "singer": 1, "seed": 7,
          "retake_f0": {3: 123456789}, "retake_mel": {5: 987654321},
          "ph_shift": {1: {0: -0.08}, 3: {1: 0.02}, 7: {0: -0.2}, 9: {1: -0.03}}},
         {"name": "params", "bpm": 100, "notes": sakura[:6], "singer": 2, "seed": 3, "params": True, "nsf": True},
+        {"name": "korean", "vb": "leapsinger_ko_mechol_sodasoo", "bpm": 120, "notes": korean, "singer": 0, "seed": 5,
+         "ph_shift": {3: {0: -0.05}}},
     ]
+    only = set(sys.argv[1:])   # ケースの名前を渡すと、それだけ書き出す
 
     for c in cases:
+        if only and c["name"] not in only:
+            continue
+        key = c.get("vb", vb.key)
+        if key not in engines:
+            engines[key] = wrap_sessions(P.PrettyPitchLeapSinger(vbs[key]))
+        eng = engines[key]
         out_dir = OUT / c["name"]
         sv = Saver(out_dir)
         phrases = eng.phrases_from_notes(c["notes"], c["bpm"])

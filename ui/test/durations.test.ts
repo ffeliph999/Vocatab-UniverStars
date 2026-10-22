@@ -3,15 +3,17 @@
 import { alignDurs, finishDurations, prepareDurations } from "../src/engine-web/durations";
 import { phrasesFromNotes } from "../src/engine-web/score";
 import type { VoicebankWeb } from "../src/engine-web/types";
-import { CASES, close, done, loadCase, readRepo, same } from "./golden";
+import { CASES, close, done, loadCase, readRepo, same, vbFor } from "./golden";
 
 const vb = JSON.parse(readRepo("voicebanks/leapsinger_ja_3singer/web.json")) as VoicebankWeb;
+const vbKo = vbFor("korean") as VoicebankWeb;
 
 const flat = (xs: number[][]): number[] => xs.flatMap((x) => x);
 const lens = (xs: number[][]): number[] => xs.map((x) => x.length);
 const num = (a: ArrayLike<number | bigint>): number[] => Array.from(a as ArrayLike<number>, (x) => Number(x));
 
 for (const name of CASES) {
+  const vb = vbFor(name) as VoicebankWeb;
   const c = loadCase(name);
   const inp = c.input;
   const got = phrasesFromNotes(vb, inp.notes, inp.bpm);
@@ -100,4 +102,14 @@ same("歌詞: 半角の伸ばし棒「ｰ」（メリスマ記号の表から）
 same("歌詞: 途中の伸ばし棒「あーい」", second("あーい"), ["a", "a", "i"]);
 same("歌詞: 区切らないローマ字「shu」", second("shu"), ["sh", "u"]);
 same("歌詞: 空白で区切った音素「a b」", second("a b"), ["a", "b"]);
+
+// 韓国語の楽譜への G2P の当て方（PrettyPitch の tests/test_g2p_ko.py の score_to_phrases の試験と同じ）
+{
+  const ns = [[0, 480, 60, "음"], [480, 480, 62, "악"], [1440, 480, 64, "밤"], [1920, 480, 65, "-"], [2400, 480, 67, "-"],
+    [3120, 480, 60, "사랑"]] as const;
+  const got = phrasesFromNotes(vbKo, ns.map(([o, d, p, l], i) => ({ id: i + 1, onset: o, dur: d, pitch: p, lyric: l })), 120)
+    .flatMap((x) => x.phrase.notes.map((n) => n.phonemes));
+  same("韓国語: 連音は休符をまたがない・終声は伸ばしの最後へ・1 音符に 2 音節", got,
+       [["eu"], ["m", "a", "K"], ["b", "a"], ["a"], ["a", "M"], ["s", "a", "r", "a", "NG"]]);
+}
 done();

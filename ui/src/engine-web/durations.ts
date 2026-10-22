@@ -270,7 +270,8 @@ interface ConsRecord {
   style_id: number;
 }
 
-/** features.extract_phrase_records: 子音ごとの特徴（入るべき音符の無い末尾の子音は作らない） */
+/** features.extract_phrase_records: 子音ごとの特徴（入るべき音符の無い末尾の子音は作らない。
+ *  ただし言語パックが final_consonants のときは、前の音符の終声として作る） */
 function extractPhraseRecords(phs: string[], dur: number[], values: number[], spk: number, style: number,
                               ps: PhoneSet): ConsRecord[] {
   const span = syllableSpanDurs(phs, dur, ps);
@@ -296,15 +297,27 @@ function extractPhraseRecords(phs: string[], dur: number[], values: number[], sp
       if (ps.isPau(phs[kk])) break;
       if (ps.isNucleus(phs[kk])) { k = kk; break; }
     }
-    if (k < 0) continue;
-    let pit = values[k];
-    if (!Number.isFinite(pit)) pit = Number.isFinite(prevVal) ? prevVal : 60.0;
-    if (!Number.isFinite(prevVal)) prevVal = pit;
+    let nextNoteDur: number;
+    let pit: number;
+    if (k < 0) {
+      // 後ろに核の無い子音（句末や休みの前）。既定では入るべき音符が無いので扱わない。
+      // final_consonants のとき（終声で句が終わる韓国語など）は前の音符の終声として扱う: 音高は前の音符の代表値、
+      // next_note_dur = 0（＝後ろに音符が無い。prev_note_dur = 0 が「前に音符が無い」を表すのと同じ約束）
+      if (!(ps.finalConsonants && j >= 0)) continue;
+      nextNoteDur = 0.0;
+      pit = Number.isFinite(prevVal) ? prevVal : 60.0;
+      prevVal = pit;
+    } else {
+      nextNoteDur = span[k];
+      pit = values[k];
+      if (!Number.isFinite(pit)) pit = Number.isFinite(prevVal) ? prevVal : 60.0;
+      if (!Number.isFinite(prevVal)) prevVal = pit;
+    }
     recs.push({
       idx: i, cons: ph,
       prev_ph: i > 0 ? phs[i - 1] : PAU, next_ph: i + 1 < n ? phs[i + 1] : PAU,
       prev2_ph: i > 1 ? phs[i - 2] : PAU, next2_ph: i + 2 < n ? phs[i + 2] : PAU,
-      prev_note_dur: prevNoteDur, next_note_dur: span[k],
+      prev_note_dur: prevNoteDur, next_note_dur: nextNoteDur,
       pitch_midi: roundHalfEven(Math.min(Math.max(pit, 0.0), 127.0)),
       pitch_diff: pit - prevVal,
       prev_note_exists: j >= 0 ? 1 : 0,

@@ -479,7 +479,7 @@ export class PianoRoll {
   // ── 描画 ─────────────────────────────────
   /**
    * 波形: 句ごとの合成済みの波形（エフェクトの前）を、窓の下端の帯に真ん中から上下へ描く。
-   * 縦はトラックでいちばん大きい振れ幅を帯の高さに合わせる（小さい声のトラックでも形が見える）。
+   * 縦は絶対値: 振幅 1.0（0 dBFS）を帯の高さに合わせる（トラックや曲を替えても大きさを比べられる）。
    */
   private drawWave(ctx: CanvasRenderingContext2D, w: number, h: number, bpm: number): void {
     const src = this.waveSource();
@@ -490,7 +490,7 @@ export class PianoRoll {
     const bottom = h - WAVE_PAD;
     const mid = bottom - WAVE_H / 2;
     const parts = src.map((s) => ({ ...s, pk: wavePeaks(s.wav) }));
-    const ref = Math.max(0.05, ...parts.map((q) => q.pk.max));
+    const ref = 1.0; // 0 dBFS
     // 帯の地（上端をぼかして、下ほど少し暗く）
     const g = ctx.createLinearGradient(0, bottom - WAVE_H - 16, 0, h);
     g.addColorStop(0, "rgba(0,0,0,0)");

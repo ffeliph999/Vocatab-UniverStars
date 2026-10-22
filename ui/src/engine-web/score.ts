@@ -1,6 +1,7 @@
 // 楽譜 → 句（engine/pipeline.py の PrettyPitchLeapSinger.phrases_from_notes・_lyric_phonemes と、
-// PrettyPitch の svs/score_io.py の score_to_phrases・_resolve_phonemes・_tokenize_lyric・_as_phoneme_list と同じ）。
+// PrettyPitch の svs/score_io.py の score_to_phrases・_apply_g2p・_resolve_phonemes・_tokenize_lyric・_as_phoneme_list と同じ）。
 // 歌詞 → 音素・休符・メリスマ・句の切れ目を Python と同じ規則で決める（ここがずれると後の段がすべてずれる）。
+import { lyricSyllables, syllablesToPhonemes } from "./g2p_ko";
 import { PhoneSet } from "./phoneset";
 import type { PNote, Phrase, ScoreNote, VoicebankWeb } from "./types";
 
@@ -162,6 +163,77 @@ function resolvePhonemes(t: ScoreTables, sn: ScoreNote, prevVowel: string): stri
   return tokenizeLyric(t, lyr, prevVowel);
 }
 
+/**
+ * score_io._apply_g2p: 言語パックが g2p を持つ言語（韓国語）で、歌詞の音素を先に決めておく。
+ * 休符を挟まずに続く音符の並び（休符・音素を直接書いた音符・ハングルの無い歌詞で区切る）ごとに G2P をかけ、
+ * 音符ごとの音素を phonemes に入れる。1 音符に複数の音節があってもよい。
+ * メリスマ（歌詞なし・伸ばし記号）の音符は、直前の音節の母音を伸ばし、その音節の終声はメリスマの最後の音符へ移す
+ * （「밤 -」→ b a | a M。終声は音を伸ばし終えてから閉じる）。
+ */
+function applyG2p(t: ScoreTables, score: ScoreNote[]): ScoreNote[] {
+  if (t.ps.g2p !== "ko") return score;
+  const out = score.slice();
+  const kind = (sn: ScoreNote): "break" | "mel" | "syl" => {
+    if (sn.is_rest) return "break";
+    if (sn.phonemes !== null) return "break";
+    if (sn.lyric === null || t.melisma.has(sn.lyric) || sn.lyric === "") return "mel";
+    if (asPhonemeList(t, sn.lyric) !== null || !lyricSyllables(sn.lyric).length) return "break";
+    return "syl";
+  };
+  const runG2p = (idx: number[]) => {
+    const syls: string[] = [];
+    const owner: number[] = [];
+    for (const i of idx) {
+      if (kind(out[i]) === "syl") {
+        const s = lyricSyllables(out[i].lyric!);
+        syls.push(...s);
+        for (let q = 0; q < s.length; q++) owner.push(i);
+      }
+    }
+    if (!syls.length) return;
+    const per = syllablesToPhonemes(syls);
+    const phs = new Map<number, string[]>(); // Python の dict と同じく、入れた順（音符の順）に並ぶ
+    for (const i of idx) if (kind(out[i]) === "syl") phs.set(i, []);
+    owner.forEach((i, q) => phs.get(i)!.push(...per[q]));
+    let lastSyl: number | null = null; // メリスマが伸ばす直前の音節の音符
+    let k = 0;
+    while (k < idx.length) {
+      const i = idx[k];
+      if (kind(out[i]) === "syl") {
+        lastSyl = i;
+        k += 1;
+        continue;
+      }
+      let j = k; // メリスマが続く範囲 [k, j)
+      while (j < idx.length && kind(out[idx[j]]) === "mel") j += 1;
+      if (lastSyl !== null) {
+        const src = phs.get(lastSyl)!;
+        let nuc = -1;
+        src.forEach((p, m) => { if (t.ps.isNucleus(p)) nuc = m; });
+        if (nuc >= 0) {
+          const vowel = src[nuc];
+          const coda = src.slice(nuc + 1);
+          phs.set(lastSyl, src.slice(0, nuc + 1));
+          for (let m = k; m < j; m++) phs.set(idx[m], [vowel, ...(m === j - 1 ? coda : [])]);
+        }
+      }
+      k = j;
+    }
+    for (const [i, p] of phs) out[i] = { ...out[i], phonemes: p };
+  };
+  let run: number[] = [];
+  out.forEach((sn, i) => {
+    if (kind(sn) === "break") {
+      runG2p(run);
+      run = [];
+    } else {
+      run.push(i);
+    }
+  });
+  runG2p(run);
+  return out;
+}
+
 export interface ScoreToPhrasesOptions {
   splitSilenceSec?: number;
   pauLeadSec?: number;
@@ -178,6 +250,7 @@ export function scoreToPhrases(vb: VoicebankWeb, score: ScoreNote[], bpm: number
   const split = opts.splitSilenceSec ?? 0.5;
   const lead = opts.pauLeadSec ?? 0.25;
   const trail = opts.pauTrailSec ?? 0.25;
+  score = applyG2p(t, score); // 韓国語など、規則の G2P を持つ言語だけ
   const b2s = 60.0 / bpm;
   const phrases: Phrase[] = [];
   let cur: PNote[] = [];

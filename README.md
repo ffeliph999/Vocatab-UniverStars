@@ -29,6 +29,7 @@ python -m http.server 8097          # このフォルダを配る（どの静的
 | `ui/src/` | 画面（TypeScript、フレームワーク無し） |
 | `ui/src/engine-web/` | ブラウザ版のエンジン。`core.ts` が解析と合成の順番、`worker.ts` が Web Worker、`client.ts` が画面側の窓口 |
 | `ui/src/engine-web/score.ts`・`durations.ts` | 楽譜 → 句 → 音素の長さ |
+| `ui/src/engine-web/g2p_ko.ts` | 韓国語の G2P（ハングル → 音素。言語パックが `g2p: ko` のとき score.ts が使う） |
 | `ui/src/engine-web/f0host.ts` | F0 のモデルの入力と、出力からの抑揚の線（ピッチ補正を含む） |
 | `ui/src/engine-web/synthhost.ts`・`voiceparams.ts`・`melspec.ts` | 音響モデルとボコーダの入力、mel の後処理、ボイスパラメータの信号処理、出た音の mel |
 | `engine/` | 手元の Python のエンジン（移植のもと。照らし合わせに使う） |
@@ -48,6 +49,11 @@ node <作業用>/t.mjs
 ```
 
 `durations`・`f0`・`synth` の 3 本。前後の処理は Python とビット単位（float32 の丸めまで）で一致する。
+試験の楽譜は日本語の 3 つ（sakura・mixed・params）と韓国語の 1 つ（korean。ハングルの G2P と句末の終声）。
+`python tools/golden/dump_golden.py korean` のようにケースの名前を渡すと、それだけ書き出す。
+
+韓国語の G2P（`ui/src/engine-web/g2p_ko.ts`）は、`python tools/golden/dump_g2p_ko.py` で PrettyPitch の `svs/g2p_ko.py` の
+結果（音節の並び 23,192 通り）を書き出し、`ui/test/g2p_ko.test.ts` で全部を比べる。
 
 ブラウザで実際にモデルを動かして、楽譜から波形まで比べる（Python と同じ雑音を入れる）:
 

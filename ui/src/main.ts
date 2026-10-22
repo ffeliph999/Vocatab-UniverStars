@@ -430,7 +430,7 @@ files.onOpen = (t) => {
   revealNotes(t);
 };
 // 確認用（URL に引数があるときだけ）: 外から楽譜の読み込みなどを呼べるようにする
-if (testing) (window as unknown as { __svs: unknown }).__svs = { files, store, parseScoreFile, missingKeys };
+if (testing) (window as unknown as { __svs: unknown }).__svs = { files, store, view, parseScoreFile, missingKeys };
 if (!testing) {
   void restore().then((r) => {
     if (!r) return;
