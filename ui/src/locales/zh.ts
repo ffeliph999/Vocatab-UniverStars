@@ -273,6 +273,7 @@ export const zh: Record<string, string> = {
   "韓国語": "韩语",
   "「{name}」を鳴らせません: {e}": "无法播放“{name}”：{e}",
   "「{name}」のエフェクトを掛けられません: {e}": "无法对“{name}”应用效果：{e}",
+  "{sec} 秒からの句の波形に数でない値が {n} 個ありました（0 にして鳴らします）": "从 {sec} 秒开始的乐句波形中有 {n} 个非数值采样（按 0 播放）",
   "ボコーダ": "声码器",
   "NSF-HiFiGAN には調波と雑音の枝が無いので、音量・うなりのほかは効きません。": "NSF-HiFiGAN 没有谐波和噪声分支，因此除音量和嘶吼外均无效。",
   "NSF-HiFiGAN の ONNX がまだ vocoders/ に無いので、今は NHVSing で鳴らしています。": "vocoders/ 中还没有 NSF-HiFiGAN 的 ONNX，目前使用 NHVSing 发声。",

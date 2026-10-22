@@ -51,6 +51,19 @@ export function assembleWav(phrases: EPhrase[]): Float32Array | null {
   return out;
 }
 
+/** 有限でないサンプル（NaN・無限大）を 0 にして、その数を返す。1 つでも残すと、再生のときトラックのフィルタ
+ *  （低域カット・イコライザ）の中身が NaN になり、そこから先がずっと無音になる（合成し直すまで直らない） */
+function scrubWav(w: Float32Array): number {
+  let n = 0;
+  for (let i = 0; i < w.length; i++) {
+    if (!Number.isFinite(w[i])) {
+      w[i] = 0;
+      n++;
+    }
+  }
+  return n;
+}
+
 export class Renderer {
   info: EngineInfo | null = null;
   /** トラックの id → 句の列（最新の解析） */
@@ -223,6 +236,12 @@ export class Renderer {
             continue;
           }
           ph.wav = j.wav;
+          const bad = scrubWav(ph.wav);
+          if (bad) {
+            const sec = (ph.startFrame / (44100 / 256)).toFixed(1);
+            console.warn(`句（${sec} 秒〜、鍵 ${ph.key}）の波形に有限でない値が ${bad} 個`);
+            this.error = tx("{sec} 秒からの句の波形に数でない値が {n} 個ありました（0 にして鳴らします）", { sec, n: bad });
+          }
           ph.melIn = j.mel_in;
           ph.melOut = j.mel_out;
           ph.melPlain = j.mel_plain;

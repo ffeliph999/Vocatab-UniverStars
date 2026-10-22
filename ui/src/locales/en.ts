@@ -273,6 +273,7 @@ export const en: Record<string, string> = {
   "韓国語": "Korean",
   "「{name}」を鳴らせません: {e}": "Cannot play “{name}”: {e}",
   "「{name}」のエフェクトを掛けられません: {e}": "Cannot apply the effects of “{name}”: {e}",
+  "{sec} 秒からの句の波形に数でない値が {n} 個ありました（0 にして鳴らします）": "The phrase at {sec} s had {n} non-numeric samples (played as 0)",
   "ボコーダ": "Vocoder",
   "NSF-HiFiGAN には調波と雑音の枝が無いので、音量・うなりのほかは効きません。": "NSF-HiFiGAN has no harmonic/noise branches, so only Volume and Growl take effect.",
   "NSF-HiFiGAN の ONNX がまだ vocoders/ に無いので、今は NHVSing で鳴らしています。": "The NSF-HiFiGAN ONNX isn't in vocoders/ yet, so NHVSing is used for now.",
