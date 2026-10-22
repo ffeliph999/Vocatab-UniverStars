@@ -25,6 +25,7 @@ uniform float frame0;   // 左端のフレーム
 uniform float span;     // 横幅ぶんのフレーム数
 uniform float perPx;    // 1 画素あたりのフレーム数
 uniform float nFrames;
+uniform float chunkW;   // 折り返しの幅（texture の 1 段のフレーム数）
 uniform float vmin;
 uniform float vmax;
 uniform sampler2D lut;  // 色の対応表（256 × 1、theme.ts の melLut）
@@ -33,10 +34,13 @@ in vec2 uv;
 out vec4 o;
 float at(float fr, float bin) {
   if (fr < 0.0 || fr >= nFrames) return -99.0;
-  int x = int(fr);
+  // 長い曲は chunkW フレームごとに折り返して、128 bin ずつ縦に積んである
+  float chunk = floor(fr / chunkW);
+  int x = int(fr - chunk * chunkW);
+  int y0 = int(chunk) * ${N_MELS};
   float b0 = floor(bin);
-  float a = texelFetch(tex, ivec2(x, int(b0)), 0).r;
-  float c = texelFetch(tex, ivec2(x, min(int(b0) + 1, ${N_MELS - 1})), 0).r;
+  float a = texelFetch(tex, ivec2(x, y0 + int(b0)), 0).r;
+  float c = texelFetch(tex, ivec2(x, y0 + min(int(b0) + 1, ${N_MELS - 1})), 0).r;
   return mix(a, c, bin - b0);
 }
 void main() {
@@ -75,6 +79,7 @@ class MelRow {
   private prog: WebGLProgram | null = null;
   private tex: WebGLTexture | null = null;
   private nFrames = 0;
+  private chunkW = 1;
   private overlay: HiDpiCanvas;
   private glCanvas: HTMLCanvasElement;
   private hover: { x: number; y: number } | null = null;
@@ -142,18 +147,28 @@ class MelRow {
     this.data = data;
     const gl = this.gl;
     if (!gl || !data) return;
-    // 本番では長い曲を texture の幅の上限ごとに分ける（モックでは上限で切る）
+    // texture の幅には上限がある（多くは 16384 フレーム ≈ 95 秒）。長い曲は上限の幅で折り返し、
+    // 128 bin ずつ縦に積む（段の数も上限まで。16384 なら 128 段 ≈ 3 時間。それより先は切る）
     const n = data.length / N_MELS;
     const maxW = gl.getParameter(gl.MAX_TEXTURE_SIZE) as number;
-    const w = Math.min(n, maxW);
-    const buf = w === n ? data : new Float32Array(w * N_MELS);
-    if (w !== n) for (let b = 0; b < N_MELS; b++) buf.set(data.subarray(b * n, b * n + w), b * w);
+    const cw = Math.min(n, maxW);
+    const rows = Math.min(Math.ceil(n / cw), Math.floor(maxW / N_MELS));
+    let buf = data;
+    if (rows > 1) {
+      buf = new Float32Array(cw * N_MELS * rows).fill(MEL_FLOOR);
+      for (let r = 0; r < rows; r++) {
+        const s = r * cw;
+        const len = Math.min(cw, n - s);
+        for (let b = 0; b < N_MELS; b++) buf.set(data.subarray(b * n + s, b * n + s + len), (r * N_MELS + b) * cw);
+      }
+    }
     gl.bindTexture(gl.TEXTURE_2D, this.tex);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, w, N_MELS, 0, gl.RED, gl.FLOAT, buf);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, cw, N_MELS * rows, 0, gl.RED, gl.FLOAT, buf);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    this.nFrames = w;
+    this.nFrames = Math.min(n, cw * rows);
+    this.chunkW = cw;
     this.redraw();
   }
 
@@ -191,6 +206,7 @@ class MelRow {
         gl.uniform1f(u("span"), span);
         gl.uniform1f(u("perPx"), span / (W - x0));
         gl.uniform1f(u("nFrames"), this.nFrames);
+        gl.uniform1f(u("chunkW"), this.chunkW);
         gl.uniform1f(u("vmin"), MEL_FLOOR);
         gl.uniform1f(u("vmax"), 2.0);
         gl.activeTexture(gl.TEXTURE0);

@@ -13,6 +13,7 @@ export interface EPhoneme {
   frames: number;
   note: number | null; // 画面の音符の id（pau は null）
   shift?: number; // エンジンが当てた、手で動かした頭のずれ（秒）
+  nucleus?: boolean; // 音節の核（母音など。言語パックの nucleus）か。古いエンジンには無い
 }
 
 export type PhraseStatus = "解析済み" | "合成中" | "済み" | "失敗";

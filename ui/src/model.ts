@@ -51,6 +51,8 @@ export interface Track {
   id: number;
   name: string;
   voice: string;
+  /** 歌わせるボイスバンク（エンジンの voicebanks の key）。無ければ一覧の先頭 */
+  voicebank?: string;
   /** トラックの色（"#rrggbb"）。空なら差し色から作る自動の色（theme.ts の trackColor） */
   color: string;
   notes: Note[];

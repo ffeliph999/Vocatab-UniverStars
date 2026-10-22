@@ -8,7 +8,7 @@ import { wavToMel } from "./melspec";
 import type { AnalyzeReq, AnalyzeResp, RestoreEntry, SynthReq, SynthResp } from "./protocol";
 import { applyRetakes, normalNoise } from "./rng";
 import { phrasesFromNotes } from "./score";
-import { acousticFeeds, finishSynth, melPostprocess, nhvFeeds, nsfFeeds, toFloat16Bits, type VocOut } from "./synthhost";
+import { acousticFeeds, finishSynth, melPostprocess, nhvFeeds, nsfFeeds, phoneSetOf, toFloat16Bits, type VocOut } from "./synthhost";
 import type { Feeds, Phrase, VoicebankWeb, VocoderWeb, WebIndex } from "./types";
 
 // ── 取り置き ──
@@ -330,11 +330,13 @@ export class Engine {
         this.analyses.put(key, hit);
       }
       const an = hit.an;
+      const ps = phoneSetOf(vb);
       out.push({
         key, note_ids: ids, start_frame: roundHalfEven(an.startSec * fr), start_sec: an.startSec,
         n_frames: an.phDurs.reduce((a, b) => a + b, 0),
         phonemes: an.phonemes.map((p, j) => ({ ph: p, frames: an.phDurs[j], shift: an.shifts[j] ?? 0,
-          note: an.noteIndex[j] >= 0 && ids.length ? ids[Math.min(an.noteIndex[j], ids.length - 1)] : null })),
+          note: an.noteIndex[j] >= 0 && ids.length ? ids[Math.min(an.noteIndex[j], ids.length - 1)] : null,
+          nucleus: ps.isNucleus(p) })), // 画面の色分け（母音など）
         plain: an.plainLog2, vib: an.vibLog2, uv: an.uv, base: an.baseLog2, seed: an.seed,
       });
     }

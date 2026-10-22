@@ -229,6 +229,7 @@ export class FileMenu {
       const tr: Track = {
         id: Math.max(0, ...p.tracks.map((x) => x.id)) + 1, name: j.tracks.length > 1 ? `${base} ${t.name}` : base,
         voice: p.tracks.find((x) => !isAudioTrack(x))?.voice ?? "ritsu",
+        voicebank: p.tracks.find((x) => !isAudioTrack(x))?.voicebank,
         color: "", mute: false, solo: false, base: defaultBase(),
         params: {}, notes: t.notes.map((n) => ({ id: nextId++, onset: n.onset + offset, dur: n.dur, pitch: n.pitch,
                                                   lyric: n.lyric, attrs: defaultAttrs() })),

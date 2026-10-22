@@ -270,6 +270,7 @@ export const ko: Record<string, string> = {
   "歌い手": "가수",
   "モデル": "모델",
   "日本語": "일본어",
+  "韓国語": "한국어",
   "ボコーダ": "보코더",
   "NSF-HiFiGAN には調波と雑音の枝が無いので、音量・うなりのほかは効きません。": "NSF-HiFiGAN에는 하모닉·노이즈 분기가 없어 볼륨과 그로울 외에는 효과가 없습니다.",
   "NSF-HiFiGAN の ONNX がまだ vocoders/ に無いので、今は NHVSing で鳴らしています。": "vocoders/에 아직 NSF-HiFiGAN의 ONNX가 없어 지금은 NHVSing으로 소리를 냅니다.",

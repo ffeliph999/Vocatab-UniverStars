@@ -44,10 +44,25 @@ function toTrack(name: string, notes: RawNote[]): ScoreTrack {
 }
 
 // ── UST ─────────────────────────────────────
-export function parseUst(bytes: Uint8Array): ScoreResult {
+/** UST の文字コード: BOM か Charset=UTF-8 があれば UTF-8。無ければ UTF-8 → Shift_JIS → EUC-KR（CP949）の順に、
+ * 読み損ないの無いものを使う（Shift_JIS の日本語が UTF-8 として通ることはまず無い）。どれも駄目なら Shift_JIS。 */
+function decodeUst(bytes: Uint8Array): string {
   const head = new TextDecoder("latin1").decode(bytes.subarray(0, 4096));
-  const utf8 = (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) || /Charset\s*=\s*UTF-8/i.test(head);
-  const txt = new TextDecoder(utf8 ? "utf-8" : "shift_jis").decode(bytes);
+  if ((bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) || /Charset\s*=\s*UTF-8/i.test(head)) {
+    return new TextDecoder("utf-8").decode(bytes);
+  }
+  for (const enc of ["utf-8", "shift_jis", "euc-kr"]) {
+    try {
+      return new TextDecoder(enc, { fatal: true }).decode(bytes);
+    } catch {
+      // 次の文字コードを試す
+    }
+  }
+  return new TextDecoder("shift_jis").decode(bytes);
+}
+
+export function parseUst(bytes: Uint8Array): ScoreResult {
+  const txt = decodeUst(bytes);
   const tm = /^Tempo=([\d.]+)/m.exec(txt);
   const bpm = tm ? Number(tm[1]) : 120;
   const notes: RawNote[] = [];

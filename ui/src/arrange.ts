@@ -390,8 +390,9 @@ export class Arrangement {
   /** 新しいトラック。色は空（差し色から作る自動の色）。 */
   private newTrackBase(name: string): Track {
     const p = this.store.project;
+    const vocal = p.tracks.find((t) => !isAudioTrack(t));
     return { id: Math.max(0, ...p.tracks.map((t) => t.id)) + 1, name,
-             voice: p.tracks.find((t) => !isAudioTrack(t))?.voice ?? "ritsu",
+             voice: vocal?.voice ?? "ritsu", voicebank: vocal?.voicebank,
              color: "", notes: [], mute: false, solo: false, base: defaultBase(), params: {} };
   }
 

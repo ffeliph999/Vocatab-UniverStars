@@ -270,6 +270,7 @@ export const zh: Record<string, string> = {
   "歌い手": "歌手",
   "モデル": "模型",
   "日本語": "日语",
+  "韓国語": "韩语",
   "ボコーダ": "声码器",
   "NSF-HiFiGAN には調波と雑音の枝が無いので、音量・うなりのほかは効きません。": "NSF-HiFiGAN 没有谐波和噪声分支，因此除音量和嘶吼外均无效。",
   "NSF-HiFiGAN の ONNX がまだ vocoders/ に無いので、今は NHVSing で鳴らしています。": "vocoders/ 中还没有 NSF-HiFiGAN 的 ONNX，目前使用 NHVSing 发声。",

@@ -197,18 +197,30 @@ export class SidePanel {
     const t = s.track;
     const head = document.createElement("div");
     head.className = "side-sec";
+    // 歌い手の選択肢: 全部のボイスバンクの歌い手（ボイスバンクごとにまとめる）。値は「ボイスバンクの key ⇥ 歌い手の名前」
+    const eng = this.engine?.connected ? this.engine : null;
+    const cur = eng?.voicebankOf(t);
+    const opt = (vb: string, n: string, label: string) =>
+      `<option value="${vb}\t${n}" ${vb === (cur?.key ?? "") && n === t.voice ? "selected" : ""}>${label}</option>`;
+    const options = eng
+      ? eng.info!.voicebanks.map((vb) => eng.info!.voicebanks.length > 1
+        ? `<optgroup label="${vb.name}">${vb.singers.map((x) => opt(vb.key, x.name, x.name)).join("")}</optgroup>`
+        : vb.singers.map((x) => opt(vb.key, x.name, x.name)).join("")).join("")
+      : ["ritsu", "natsume", "oniku"].map((n) => opt("", n, n)).join("");
+    const LANG_NAMES: Record<string, string> = { ja: tx("日本語"), ko: tx("韓国語") };
+    const langCode = cur?.language ?? "ja";
+    const lang = LANG_NAMES[langCode] ?? langCode;
     head.innerHTML = `<div class="track-title"><span class="dot"></span><span class="tn"></span></div>
-      <div class="row2"><span>${tx("歌い手")}</span><select id="sel-voice">
-        ${(this.engine?.connected ? this.engine.voicebank.singers.map((x) => x.name) : ["ritsu", "natsume", "oniku"])
-          .map((n) => `<option ${n === t.voice ? "selected" : ""}>${n}</option>`).join("")}
-      </select></div>
-      <div class="row2"><span>${tx("モデル")}</span><span class="muted">${this.engine?.connected ? this.engine.voicebank.name
-        : tx("エンジン未接続")} · ${tx("日本語")}</span></div>`;
+      <div class="row2"><span>${tx("歌い手")}</span><select id="sel-voice">${options}</select></div>
+      <div class="row2"><span>${tx("モデル")}</span><span class="muted">${cur ? cur.name
+        : tx("エンジン未接続")} · ${lang}</span></div>`;
     head.querySelector<HTMLElement>(".dot")!.style.background = trackColor(s.project, t);
     head.querySelector(".tn")!.textContent = t.name;
     head.querySelector<HTMLSelectElement>("#sel-voice")!.addEventListener("change", (e) => {
       const before = s.snapshot();
-      t.voice = (e.target as HTMLSelectElement).value;
+      const [vb, name] = (e.target as HTMLSelectElement).value.split("\t");
+      t.voice = name;
+      if (vb) t.voicebank = vb;
       s.commit(before);
       s.changed("project");
     });

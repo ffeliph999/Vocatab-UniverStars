@@ -15,7 +15,7 @@ const N_MELS = 128;
 const fr32 = Math.fround;
 
 const psCache = new WeakMap<VoicebankWeb, PhoneSet>();
-const phoneSetOf = (vb: VoicebankWeb): PhoneSet => {
+export const phoneSetOf = (vb: VoicebankWeb): PhoneSet => {
   let ps = psCache.get(vb);
   if (!ps) psCache.set(vb, (ps = new PhoneSet(vb.phoneset)));
   return ps;

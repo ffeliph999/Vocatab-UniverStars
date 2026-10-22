@@ -71,9 +71,9 @@ export class Renderer {
     // 待機から起きたエンジンへ、画面が持っている解析の結果を戻す（中身の変わっていない句を解析し直さないため）
     this.engine.collectRestore = () => {
       if (!this.info) return [];
-      const vb = this.voicebank.key;
       const out: RestoreEntry[] = [];
       for (const track of this.store.project.tracks) {
+        const vb = this.voicebankOf(track).key;
         for (const ph of this.phrases(track)) {
           out.push({ key: ph.key, vb, singer: this.singerId(track), ids: ph.noteIds, phonemes: ph.phonemes,
                      start_sec: ph.startSec, plain: ph.plain, vib: ph.vib, uv: ph.uv, base: ph.base, seed: ph.seed });
@@ -93,12 +93,19 @@ export class Renderer {
     return this.info !== null && this.info.voicebanks.length > 0;
   }
 
+  /** 選んでいるトラックのボイスバンク（状態の表示に使う） */
   get voicebank() {
-    return this.info!.voicebanks[0];
+    return this.voicebankOf(this.store.track);
+  }
+
+  /** トラックが歌うボイスバンク（key が一覧に無ければ先頭） */
+  voicebankOf(track: Track) {
+    const vbs = this.info!.voicebanks;
+    return vbs.find((v) => v.key === track.voicebank) ?? vbs[0];
   }
 
   singerId(track: Track): number {
-    return this.voicebank.singers.find((s) => s.name === track.voice)?.id ?? 0;
+    return this.voicebankOf(track).singers.find((s) => s.name === track.voice)?.id ?? 0;
   }
 
   /** 選んでいるボコーダの鍵（NSF-HiFiGAN が無ければ NHVSing を使う）。 */
@@ -142,7 +149,6 @@ export class Renderer {
     this.busy = true;
     const ver = this.store.version;
     const p = this.store.project;
-    const vb = this.voicebank.key;
     try {
       // 1. 解析（速い。中身が同じ句はエンジン側で取っておいたものを返す）
       for (const track of p.tracks) {
@@ -156,7 +162,7 @@ export class Renderer {
         let j;
         try {
           j = await this.engine.analyze({
-            voicebank: vb, singer: this.singerId(track), bpm: p.bpm, seed: 0,
+            voicebank: this.voicebankOf(track).key, singer: this.singerId(track), bpm: p.bpm, seed: 0,
             notes: notes.map((n) => ({ id: n.id, onset: n.onset, dur: n.dur, pitch: n.pitch, lyric: n.lyric,
                                        retake_f0: n.attrs.retakeF0 ?? 0, ph_shift: n.phShift ?? {} })),
           });
@@ -207,7 +213,8 @@ export class Renderer {
           this.onUpdate();
           let j;
           try {
-            j = await this.engine.synthesize({ voicebank: vb, singer, key: ph.key, f0_log2: log2, vocoder: voc, params,
+            // 句の鍵にボイスバンクが入っているので、ボイスバンクを替えた句は解析から作り直しになる
+            j = await this.engine.synthesize({ voicebank: this.voicebankOf(track).key, singer, key: ph.key, f0_log2: log2, vocoder: voc, params,
                                                mel_out: out, mel_plain: plain, retake_mel: retakeMel });
           } catch (e) {
             ph.status = "失敗";

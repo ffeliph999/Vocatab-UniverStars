@@ -29,6 +29,7 @@ export interface Derived {
 }
 
 
+// エンジンが核かどうかを返さないとき（古いエンジン）の代わり: 日本語の核
 const VOWEL_LIKE = /^[aiueoAIUEON]$/;
 
 /** エンジンの結果（句の列）から、音素のタイミングとピッチの線を作る。 */
@@ -58,7 +59,7 @@ function fromEngine(project: Project, track: Track, phrases: EPhrase[],
         // 動かせる頭: 前の音素とつながっている頭と、pau の後の頭（句の頭・句の途中の休符の後）。
         // pau の後は、最初に作られた pau の中だけで左へ伸ばせる（pau は PAU_MIN 残す。エンジンの _apply_shifts と同じ）
         const seg: PhoneSeg = { ph: p.ph, start: s, end: (f + p.frames) / FPS, noteId: p.note, idx,
-                                vowel: VOWEL_LIKE.test(p.ph), baseStart: s - applied,
+                                vowel: p.nucleus ?? VOWEL_LIKE.test(p.ph), baseStart: s - applied,
                                 movable: !!prev || pauStart !== null, edited: !!want };
         if (want !== applied) {
           if (prev) {
