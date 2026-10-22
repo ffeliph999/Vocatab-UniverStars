@@ -1,25 +1,33 @@
 // 再生（モックの仮の音）: 各トラックのピッチの線をなぞるのこぎり波を、音量の曲線で鳴らす。
 // エンジンをつないだら、ここは句ごとに作った本物の音を並べて鳴らす形に替える。
-import { audioContext } from "./audio";
+import { audioContext, readyAudioContext } from "./audio";
 import { audioBuffer } from "./audiofiles";
 import { buildFxChain, type FxChain } from "./fx";
 import { derive } from "./derive";
+import { t as tx } from "./i18n";
 import { FPS, isAudioTrack, secPerTick, type Track, trackRegion } from "./model";
 import { evalCurve, paramDef } from "./params";
 import type { Store } from "./store";
 import type { View } from "./view";
 import { KEY_W } from "./view";
 
+/** AudioParam に入れる値: 有限でなければ代わりの値（NaN を入れると例外になり、再生の準備が止まる） */
+const finite = (v: number, fallback: number): number => (Number.isFinite(v) ? v : fallback);
+
 export class Transport {
   playing = false;
   follow = true;
+  private starting = false; // AudioContext を起こしている間（二重に再生しないように）
   private nodes: AudioScheduledSourceNode[] = [];
   private startTick = 0; // 再生を始めた位置（停止で戻る）
   private t0 = 0; // 再生を始めた AudioContext の時刻
+  private ctx: AudioContext | null = null; // 再生に使っている AudioContext（途中で作り直されても時刻はこれで測る）
   private raf = 0;
 
   /** トラックの合成済みの波形（曲の頭から、44.1 kHz）。無ければ仮の音で鳴らす。 */
   engineWav: ((track: Track) => Float32Array | null) | null = null;
+  /** 再生の準備で起きた失敗を知らせる（画面の下の欄に出す） */
+  onError: (message: string) => void = (m) => console.error(m);
   /** トラックの id → 再生中の音量とパンのノード（つまみや M・S を動かすとその場で変わる） */
   private mixNodes = new Map<number, { gain: GainNode; pan: StereoPannerNode; fx: FxChain | null }>();
 
@@ -31,8 +39,7 @@ export class Transport {
   }
 
   /** トラックの出口（エフェクト → 音量 → パン → スピーカー）を作る。伴奏はエフェクトを通さない（ステレオのまま）。 */
-  private trackOut(track: Track): AudioNode {
-    const a = audioContext();
+  private trackOut(a: AudioContext, track: Track): AudioNode {
     const fx = isAudioTrack(track) ? null : buildFxChain(a);
     const gain = a.createGain();
     const pan = a.createStereoPanner();
@@ -51,90 +58,46 @@ export class Transport {
       const m = this.mixNodes.get(t.id);
       if (!m) continue;
       const audible = !t.mute && (!anySolo || t.solo);
-      const db = t.gain ?? 0;
+      const db = finite(t.gain ?? 0, 0);
       m.gain.gain.value = audible && db > -24 ? 10 ** (db / 20) : 0; // つまみの左端（−24 dB）は無音
-      m.pan.pan.value = Math.max(-1, Math.min(1, t.pan ?? 0));
-      m.fx?.update(t.fx);
+      m.pan.pan.value = Math.max(-1, Math.min(1, finite(t.pan ?? 0, 0)));
+      try {
+        m.fx?.update(t.fx);
+      } catch (e) {
+        this.onError(tx("「{name}」のエフェクトを掛けられません: {e}", { name: t.name, e: e instanceof Error ? e.message : String(e) }));
+      }
     }
   }
 
   toggle(): void {
     if (this.playing) this.pause();
-    else this.play();
+    else void this.play();
   }
 
-  play(): void {
-    const a = audioContext();
+  async play(): Promise<void> {
+    if (this.playing || this.starting) return;
+    this.starting = true;
+    let a: AudioContext;
+    try {
+      a = await readyAudioContext();
+    } finally {
+      this.starting = false;
+    }
+    if (this.playing) return;
+    this.ctx = a;
     const s = this.store;
     const spt = secPerTick(s.project.bpm);
     this.startTick = s.playTick;
     const startSec = s.playTick * spt;
     const when = a.currentTime + 0.05;
-    // 消音・ソロで聞こえないトラックも鳴らしておき、音量 0 にする（再生中に M・S を切り替えられるように）
+    // 消音・ソロで聞こえないトラックも鳴らしておき、音量 0 にする（再生中に M・S を切り替えられるように）。
+    // 1 つのトラックの準備が失敗しても、ほかのトラックは鳴らす（失敗は下の欄に出す）
     for (const track of s.project.tracks) {
-      if (isAudioTrack(track)) {
-        // 伴奏: 範囲の頭から、音声の offsetSec の所を鳴らす
-        const buf = track.audio && audioBuffer(track.audio.id);
-        if (!buf || !track.audio) continue;
-        const r = trackRegion(track, s.project.beatsPerBar);
-        const r0 = r.start * spt;
-        const r1 = r.end * spt;
-        if (startSec >= r1) continue;
-        const node = a.createBufferSource();
-        node.buffer = buf;
-        node.connect(this.trackOut(track));
-        const lead = Math.max(0, r0 - startSec); // 再生の頭から伴奏が始まるまで
-        const into = track.audio.offsetSec + Math.max(0, startSec - r0); // 音声の中のどこから
-        node.start(when + lead, into, Math.max(0, r1 - Math.max(r0, startSec)));
-        this.nodes.push(node);
-        continue;
+      try {
+        this.startTrack(a, track, when, startSec, spt);
+      } catch (e) {
+        this.onError(tx("「{name}」を鳴らせません: {e}", { name: track.name, e: e instanceof Error ? e.message : String(e) }));
       }
-      if (!track.notes.length) continue;
-      const wav = this.engineWav?.(track) ?? null;
-      if (wav) {
-        // エンジンの音: 句を並べた波形をそのまま鳴らす
-        const off = Math.floor(startSec * 44100);
-        if (off >= wav.length) continue;
-        const buf = a.createBuffer(1, wav.length - off, 44100);
-        buf.copyToChannel(wav.subarray(off), 0);
-        const src = a.createBufferSource();
-        src.buffer = buf;
-        src.connect(this.trackOut(track));
-        src.start(when);
-        this.nodes.push(src);
-        continue;
-      }
-      const der = derive(s.project, track);
-      const i0 = Math.max(0, Math.floor(startSec * FPS));
-      const n = der.pitch.length - i0;
-      if (n < 2) continue;
-      const freq = new Float32Array(n);
-      const gain = new Float32Array(n);
-      let last = 220;
-      const ld = paramDef("loudness").def;
-      for (let k = 0; k < n; k++) {
-        const p = der.pitch[i0 + k];
-        const voiced = !Number.isNaN(p);
-        if (voiced) last = 440 * 2 ** ((p - 69) / 12);
-        freq[k] = last;
-        const db = track.base.loudness + evalCurve(track.params.loudness, (i0 + k) / FPS / spt, ld);
-        gain[k] = voiced ? 0.09 * 10 ** (db / 20) : 0;
-      }
-      const dur = n / FPS;
-      const osc = a.createOscillator();
-      osc.type = "sawtooth";
-      osc.frequency.setValueCurveAtTime(freq, when, dur);
-      const lp = a.createBiquadFilter();
-      lp.type = "lowpass";
-      lp.frequency.value = 1800;
-      lp.Q.value = 0.7;
-      const g = a.createGain();
-      g.gain.setValueAtTime(0, when);
-      g.gain.setValueCurveAtTime(gain, when, dur);
-      osc.connect(lp).connect(g).connect(this.trackOut(track));
-      osc.start(when);
-      osc.stop(when + dur);
-      this.nodes.push(osc);
     }
     this.playing = true;
     this.t0 = when;
@@ -142,8 +105,76 @@ export class Transport {
     this.onState();
   }
 
+  /** 1 つのトラックの音を、AudioContext の時刻 when（曲の startSec 秒の所）から鳴らす。 */
+  private startTrack(a: AudioContext, track: Track, when: number, startSec: number, spt: number): void {
+    const s = this.store;
+    if (isAudioTrack(track)) {
+      // 伴奏: 範囲の頭から、音声の offsetSec の所を鳴らす
+      const buf = track.audio && audioBuffer(track.audio.id);
+      if (!buf || !track.audio) return;
+      const r = trackRegion(track, s.project.beatsPerBar);
+      const r0 = r.start * spt;
+      const r1 = r.end * spt;
+      if (startSec >= r1) return;
+      const node = a.createBufferSource();
+      node.buffer = buf;
+      node.connect(this.trackOut(a, track));
+      const lead = Math.max(0, r0 - startSec); // 再生の頭から伴奏が始まるまで
+      const into = finite(track.audio.offsetSec, 0) + Math.max(0, startSec - r0); // 音声の中のどこから
+      node.start(when + lead, into, Math.max(0, r1 - Math.max(r0, startSec)));
+      this.nodes.push(node);
+      return;
+    }
+    if (!track.notes.length) return;
+    const wav = this.engineWav?.(track) ?? null;
+    if (wav) {
+      // エンジンの音: 句を並べた波形をそのまま鳴らす
+      const off = Math.floor(startSec * 44100);
+      if (off >= wav.length) return;
+      const buf = a.createBuffer(1, wav.length - off, 44100);
+      buf.copyToChannel(wav.subarray(off), 0);
+      const src = a.createBufferSource();
+      src.buffer = buf;
+      src.connect(this.trackOut(a, track));
+      src.start(when);
+      this.nodes.push(src);
+      return;
+    }
+    const der = derive(s.project, track);
+    const i0 = Math.max(0, Math.floor(startSec * FPS));
+    const n = der.pitch.length - i0;
+    if (n < 2) return;
+    const freq = new Float32Array(n);
+    const gain = new Float32Array(n);
+    let last = 220;
+    const ld = paramDef("loudness").def;
+    for (let k = 0; k < n; k++) {
+      const p = der.pitch[i0 + k];
+      const voiced = Number.isFinite(p);
+      if (voiced) last = 440 * 2 ** ((p - 69) / 12);
+      freq[k] = last;
+      const db = track.base.loudness + evalCurve(track.params.loudness, (i0 + k) / FPS / spt, ld);
+      gain[k] = voiced ? finite(0.09 * 10 ** (db / 20), 0) : 0;
+    }
+    const dur = n / FPS;
+    const osc = a.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.setValueCurveAtTime(freq, when, dur);
+    const lp = a.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 1800;
+    lp.Q.value = 0.7;
+    const g = a.createGain();
+    g.gain.setValueAtTime(0, when);
+    g.gain.setValueCurveAtTime(gain, when, dur);
+    osc.connect(lp).connect(g).connect(this.trackOut(a, track));
+    osc.start(when);
+    osc.stop(when + dur);
+    this.nodes.push(osc);
+  }
+
   private tick(startSec: number): void {
-    const a = audioContext();
+    const a = this.ctx ?? audioContext();
     const s = this.store;
     const spt = secPerTick(s.project.bpm);
     const sec = startSec + Math.max(0, a.currentTime - this.t0);

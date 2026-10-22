@@ -28,6 +28,9 @@ export class FileMenu {
   private dirty = false;
   /** 楽譜を読み込んで足したトラック（画面をそこへ動かすため） */
   onImport: (t: Track) => void = () => undefined;
+  /** 楽譜を読み込むとき、歌詞に合う歌い手を選ぶ（今の歌い手のままでよければ null）。main.ts がエンジンの一覧から決める */
+  pickVoice: (lyrics: string[], cur: { voice: string; voicebank?: string }) => { voice: string; voicebank: string } | null =
+    () => null;
   /** プロジェクトを開いたとき（今のトラックの音符が見えるように画面を動かすため） */
   onOpen: (t: Track) => void = () => undefined;
 
@@ -226,10 +229,13 @@ export class FileMenu {
     const base = f.name.replace(/\.[^.]+$/, "");
     for (const t of j.tracks) {
       if (!t.notes.length) continue;
+      // 歌い手は最初の歌のトラックから引き継ぐ。歌詞の言語が合わなければ（ハングルの楽譜を日本語の歌い手で、など）合うものへ
+      const vocal = p.tracks.find((x) => !isAudioTrack(x));
+      const cur = { voice: vocal?.voice ?? "ritsu", voicebank: vocal?.voicebank };
+      const who = this.pickVoice(t.notes.map((n) => n.lyric), cur) ?? cur;
       const tr: Track = {
         id: Math.max(0, ...p.tracks.map((x) => x.id)) + 1, name: j.tracks.length > 1 ? `${base} ${t.name}` : base,
-        voice: p.tracks.find((x) => !isAudioTrack(x))?.voice ?? "ritsu",
-        voicebank: p.tracks.find((x) => !isAudioTrack(x))?.voicebank,
+        voice: who.voice, voicebank: who.voicebank,
         color: "", mute: false, solo: false, base: defaultBase(),
         params: {}, notes: t.notes.map((n) => ({ id: nextId++, onset: n.onset + offset, dur: n.dur, pitch: n.pitch,
                                                   lyric: n.lyric, attrs: defaultAttrs() })),

@@ -262,6 +262,10 @@ const transport = new Transport(store, view, () => pr.hc.w, () => {
   $("btn-play").innerHTML = transport.playing ? ICONS.pause : ICONS.play;
   $("btn-play").classList.toggle("on", transport.playing);
 });
+transport.onError = (m) => {
+  console.error(m);
+  hint(m);
+};
 $("btn-play").innerHTML = ICONS.play;
 $("btn-stop").innerHTML = ICONS.stop;
 $("btn-loop").innerHTML = ICONS.loop;
@@ -423,6 +427,17 @@ files.onImport = (t) => {
   arr.reveal(t);
   revealNotes(t);
 };
+// 読み込んだ楽譜の歌詞にハングル（仮名）があり、今の歌い手のボイスバンクが別の言語なら、その言語のボイスバンクの最初の歌い手にする
+files.pickVoice = (lyrics, cur) => {
+  if (!renderer.connected) return null;
+  const has = (re: RegExp) => lyrics.some((l) => re.test(l ?? ""));
+  const lang = has(/[가-힣]/) ? "ko" : has(/[぀-ヿ]/) ? "ja" : null;
+  if (!lang) return null;
+  const vbs = renderer.info!.voicebanks;
+  if ((vbs.find((v) => v.key === cur.voicebank) ?? vbs[0]).language === lang) return null;
+  const vb = vbs.find((v) => v.language === lang && v.singers.length);
+  return vb ? { voicebank: vb.key, voice: vb.singers[0].name } : null;
+};
 // プロジェクトを開いたら: 曲の地図を曲全体が収まる縮尺・高さにし、今のトラックの頭と音域を見せる
 files.onOpen = (t) => {
   arr.fitHeight();
@@ -430,7 +445,7 @@ files.onOpen = (t) => {
   revealNotes(t);
 };
 // 確認用（URL に引数があるときだけ）: 外から楽譜の読み込みなどを呼べるようにする
-if (testing) (window as unknown as { __svs: unknown }).__svs = { files, store, view, parseScoreFile, missingKeys };
+if (testing) (window as unknown as { __svs: unknown }).__svs = { files, store, view, transport, parseScoreFile, missingKeys };
 if (!testing) {
   void restore().then((r) => {
     if (!r) return;

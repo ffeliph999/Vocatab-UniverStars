@@ -114,30 +114,41 @@ export function buildFxChain(ctx: BaseAudioContext): FxChain {
   sum.connect(pre).connect(conv).connect(wet).connect(output);
   let irKey = "";
 
+  // 値が有限でなければ既定の値を使う（AudioParam に NaN・undefined を入れると例外になり、再生の準備が止まる。
+  // 古い保存で項目が欠けていても鳴るように）
+  const d = defaultFx();
+  const num = (v: unknown, fallback: number): number => (typeof v === "number" && Number.isFinite(v) ? v : fallback);
   const update = (f: TrackFx | undefined): void => {
-    const fx = f ?? defaultFx();
-    const eqOn = !!f && fx.eq.on;
-    lowCut.frequency.value = eqOn ? fx.eq.lowCut : 10;
+    const fx = f ?? d;
+    const eq = fx.eq ?? d.eq;
+    const cp = fx.comp ?? d.comp;
+    const rv = fx.reverb ?? d.reverb;
+    const eqOn = !!f && !!eq.on;
+    lowCut.frequency.value = eqOn ? num(eq.lowCut, 10) : 10;
     bands.forEach((b, i) => {
-      const s = fx.eq.bands[i];
-      b.frequency.value = s?.freq ?? 1000;
-      b.Q.value = s?.q ?? 1;
-      b.gain.value = eqOn ? s?.gain ?? 0 : 0;
+      const s = eq.bands?.[i];
+      b.frequency.value = num(s?.freq, 1000);
+      b.Q.value = num(s?.q, 1);
+      b.gain.value = eqOn ? num(s?.gain, 0) : 0;
     });
-    const compOn = !!f && fx.comp.on;
-    comp.threshold.value = fx.comp.threshold;
-    comp.ratio.value = fx.comp.ratio;
-    comp.attack.value = fx.comp.attack;
-    compPath.gain.value = compOn ? 1 / autoMakeup(fx.comp.threshold, fx.comp.ratio) : 0;
+    const compOn = !!f && !!cp.on;
+    const th = num(cp.threshold, d.comp.threshold);
+    const ratio = num(cp.ratio, d.comp.ratio);
+    comp.threshold.value = th;
+    comp.ratio.value = ratio;
+    comp.attack.value = num(cp.attack, d.comp.attack);
+    compPath.gain.value = compOn ? 1 / autoMakeup(th, ratio) : 0;
     through.gain.value = compOn ? 0 : 1;
-    const revOn = !!f && fx.reverb.on;
-    pre.delayTime.value = Math.max(0, fx.reverb.preDelay) / 1000;
-    wet.gain.value = revOn ? fx.reverb.wet : 0;
-    dry.gain.value = revOn ? 1 - fx.reverb.wet * 0.5 : 1;
-    const key = `${fx.reverb.preset}|${fx.reverb.decay.toFixed(2)}`;
+    const revOn = !!f && !!rv.on;
+    const wetV = num(rv.wet, d.reverb.wet);
+    const decay = Math.max(0.05, num(rv.decay, d.reverb.decay)); // 0 だと残響の式が 0 で割ることになる
+    pre.delayTime.value = Math.min(0.5, Math.max(0, num(rv.preDelay, 0)) / 1000);
+    wet.gain.value = revOn ? wetV : 0;
+    dry.gain.value = revOn ? 1 - wetV * 0.5 : 1;
+    const key = `${rv.preset}|${decay.toFixed(2)}`;
     if (revOn && key !== irKey) {
       irKey = key;
-      conv.buffer = reverbIR(ctx, fx.reverb.preset, fx.reverb.decay);
+      conv.buffer = reverbIR(ctx, rv.preset, decay);
     }
   };
   return { input, output, update };
