@@ -1,6 +1,6 @@
 """全体の照らし合わせ（ui/test/e2e.ts）をヘッドレスの Chrome で走らせ、結果を出す。
 
-ui/test/e2e.ts を esbuild で ui/test/e2e.js にまとめ、svs_editor_browser を http で配り、e2e.html を開く。
+ui/test/e2e.ts を esbuild で ui/test/e2e.js にまとめ、リポジトリの頭を http で配り、e2e.html を開く。
 使い方: python tools/run_e2e.py [--cases sakura,mixed,params]
 """
 import argparse

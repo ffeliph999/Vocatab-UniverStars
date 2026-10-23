@@ -47,7 +47,7 @@ _engines_lock = threading.Lock()
 _cache: "OrderedDict[str, tuple[str, PhraseAnalysis]]" = OrderedDict()   # 鍵 → (ボイスバンク, 解析)
 _CACHE_MAX = 512
 
-app = FastAPI(title="SVS Editor engine")
+app = FastAPI(title="VocaTab engine")
 
 
 def engine(key: str) -> PrettyPitchLeapSinger:
@@ -244,7 +244,7 @@ def main():
     ap.add_argument("--host", default="127.0.0.1")
     a = ap.parse_args()
     # 動いていても何も出ないと分からないので、開く所と止め方を出す（uvicorn の細かいログは出さない）
-    print(f"SVS Editor: http://{a.host}:{a.port}/ をブラウザで開いてください（止めるには Ctrl+C）", flush=True)
+    print(f"VocaTab: http://{a.host}:{a.port}/ をブラウザで開いてください（止めるには Ctrl+C）", flush=True)
     print("ボイスバンク: " + ("、".join(v.name for v in VBS.values()) or "なし（voicebanks/ を確かめてください）"), flush=True)
     uvicorn.run(app, host=a.host, port=a.port, log_level="warning")
 

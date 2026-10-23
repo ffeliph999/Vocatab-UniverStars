@@ -1,4 +1,4 @@
-"""zhejiang_university の自作エディタのプロジェクト（.zsong）を、SVS Editor のプロジェクト（.svsproj）にする。
+"""zhejiang_university の自作エディタのプロジェクト（.zsong）を、VocaTab のプロジェクト（.svsproj）にする。
 
     python tools/zsong_to_svsproj.py <.zsong> [<.zsong> ...] [--out <dir>] [--voice ritsu] [--no-copy]
 

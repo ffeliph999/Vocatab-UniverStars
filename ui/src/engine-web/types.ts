@@ -36,7 +36,7 @@ export interface VoicebankWeb {
   language: string;
   grid: { sample_rate: number; hop: number };
   frame_rate: number;
-  models: { acoustic: string; f0: string; cons_dur: string }; // svs_editor_browser の頭から見た相対パス
+  models: { acoustic: string; f0: string; cons_dur: string }; // リポジトリの頭から見た相対パス
   phoneset: PhoneSetData;
   /** 鍵は歌い手の id（文字列）、"*" は歌い手を指定しないとき。enabled は表全体の有効・無効 */
   profile: { enabled: boolean } & Record<string, ProfileTable | boolean>;

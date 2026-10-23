@@ -209,7 +209,7 @@ export class Engine {
     this.vocCache = new ByteLRU(limits.vocCacheBytes ?? 128 * 1024 * 1024, per);
   }
 
-  /** base: svs_editor_browser の頭の URL（web_index.json・voicebanks・vocoders がある所）。useGpu は頼まれたときだけ（既定は CPU） */
+  /** base: リポジトリの頭の URL（web_index.json・voicebanks・vocoders がある所）。useGpu は頼まれたときだけ（既定は CPU） */
   async init(base: string, preload = true, useGpu = false): Promise<WebIndex> {
     this.base = base;
     try {

@@ -5,7 +5,7 @@
   配列は {"$dtype": "float32", "$shape": [...], "$bin": "x.bin"} か {"$dtype": ..., "$shape": ..., "$data": [...]}。
   int64 は int32 に縮めて書く（$dtype は元の型のまま）。bool は uint8。
 
-使い方: python tools/golden/dump_golden.py [ケースの名前 ...]   （svs_editor_browser のどこからでも。名前を省くと全部）
+使い方: python tools/golden/dump_golden.py [ケースの名前 ...]   （リポジトリのどこからでも。名前を省くと全部）
 """
 from __future__ import annotations
 

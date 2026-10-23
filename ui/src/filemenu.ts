@@ -19,7 +19,7 @@ type PickerWindow = Window & {
   showOpenFilePicker?: (o: unknown) => Promise<FsHandle[]>;
 };
 const w = window as PickerWindow;
-const PROJECT_TYPES = [{ description: tx("SVS Editor のプロジェクト"), accept: { "application/json": [".svsproj"] } }];
+const PROJECT_TYPES = [{ description: tx("VocaTab のプロジェクト"), accept: { "application/json": [".svsproj"] } }];
 
 export class FileMenu {
   private handle: FsHandle | null = null; // 開いた・保存したファイル（上書き保存の先）

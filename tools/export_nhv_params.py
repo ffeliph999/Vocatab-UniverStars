@@ -1,4 +1,4 @@
-"""NHVSing v3.x を、SVS Editor 用の入出力を足した ONNX に書き出す（NHVSing の export.py の部品を使う）。
+"""NHVSing v3.x を、VocaTab 用の入出力を足した ONNX に書き出す（NHVSing の export.py の部品を使う）。
 
 NHVSing の書き出しとの違い:
   * 雑音の枝の白色雑音を入力 `noise`（[B,1,T,256] の標準正規分布。並べると [B,1,256·T]）にする

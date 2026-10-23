@@ -153,7 +153,7 @@ export class WebEngine implements EngineClient {
 
   async info(): Promise<EngineInfo | null> {
     try {
-      // ページ（ui/index.html）の 1 つ上が svs_editor_browser の頭（web_index.json・voicebanks・vocoders がある所）。
+      // ページ（ui/index.html）の 1 つ上がリポジトリの頭（web_index.json・voicebanks・vocoders がある所）。
       // GPU（WebGPU）は設定（既定はオフ）か URL で決める: ?gpu=1 で使う、?gpu=0 で使わない
       const g = new URLSearchParams(location.search).get("gpu");
       this.initMsg = { base: new URL("../", location.href).href, gpu: g === "1" ? true : g === "0" ? false : getGpu() };

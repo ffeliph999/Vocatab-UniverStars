@@ -73,7 +73,7 @@ export const en: Record<string, string> = {
   "Safari では使えません（WebGPU 入りの部品を読むとページが読み込み直されるため）": "Not available in Safari (loading the WebGPU build makes Safari reload the page)",
   "このブラウザは WebGPU に対応していません": "This browser does not support WebGPU",
   "この環境では GPU を使えません（WebGPU の準備ができません）": "The GPU is not available here (WebGPU could not be set up)",
-  "SVS Editor のプロジェクト": "SVS Editor project",
+  "VocaTab のプロジェクト": "VocaTab project",
   "（未保存）": " (not saved)",
   "編集はブラウザの中に自動で保存しています（読み込み直しても続きから）": "Edits are autosaved in the browser (reloading continues where you left off)",
   "自動保存 {time}": "Autosaved {time}",

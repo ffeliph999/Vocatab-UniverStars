@@ -4,7 +4,7 @@
     voicebanks/<名前>/web.json          音素の表・モーラ表・楽譜の記号・子音の長さの下限（歌い手ごとに引いた値）・
                                         F0 と子音の長さのモデルの設定・話者ベクトル
 
-パスはすべて svs_editor_browser の頭（ページの 1 つ上）から見た相対。ボイスバンクやボコーダを足したら作り直す。
+パスはすべてリポジトリの頭（ページの 1 つ上）から見た相対。ボイスバンクやボコーダを足したら作り直す。
 使い方: python tools/export_web_assets.py
 """
 from __future__ import annotations

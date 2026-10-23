@@ -73,7 +73,7 @@ export const zh: Record<string, string> = {
   "Safari では使えません（WebGPU 入りの部品を読むとページが読み込み直されるため）": "Safari 中不可用（加载 WebGPU 版组件会导致页面被重新加载）",
   "このブラウザは WebGPU に対応していません": "此浏览器不支持 WebGPU",
   "この環境では GPU を使えません（WebGPU の準備ができません）": "此环境无法使用 GPU（无法初始化 WebGPU）",
-  "SVS Editor のプロジェクト": "SVS Editor 工程",
+  "VocaTab のプロジェクト": "VocaTab 工程",
   "（未保存）": "（未保存）",
   "編集はブラウザの中に自動で保存しています（読み込み直しても続きから）": "编辑内容会自动保存在浏览器中（重新加载后可继续）",
   "自動保存 {time}": "已自动保存 {time}",
