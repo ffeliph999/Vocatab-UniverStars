@@ -4,9 +4,11 @@
     vocoders/<名前>/vocoder.yaml       ボコーダの種類と ONNX のファイル
 
 yaml の中のパスは、その yaml があるフォルダから見た相対パス（絶対パスも可）。
+PrettyPitch の場所（code.prettypitch）は環境変数 PRETTYPITCH_ROOT があればそちらを使う。
 """
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -31,6 +33,8 @@ class Voicebank:
     singers: list[Singer]
     default_vocoder: str
     credits: str = ""
+    publish: bool = True         # ブラウザ版の一覧（web_index.json）に載せるか。Python のエンジンは関係なく読む
+    breaths: Path | None = None  # ブレスの mel の一覧（breaths.json）。無ければブレスは入れない
     raw: dict = field(default_factory=dict)
 
     def to_json(self) -> dict:
@@ -64,13 +68,17 @@ def _resolve(base: Path, p: str | None) -> Path | None:
 
 def load_voicebank(d: Path) -> Voicebank:
     y = yaml.safe_load((d / "voicebank.yaml").read_text(encoding="utf-8"))
+    code = {k: _resolve(d, v) for k, v in (y.get("code") or {}).items()}
+    env = os.environ.get("PRETTYPITCH_ROOT")
+    if env:
+        code["prettypitch"] = Path(env).expanduser().resolve()
     return Voicebank(
         key=d.name, dir=d, name=y.get("name", d.name), language=y.get("language", "ja"),
-        pipeline=y.get("pipeline", "prettypitch_leapsinger"),
-        code={k: _resolve(d, v) for k, v in (y.get("code") or {}).items()},
+        pipeline=y.get("pipeline", "prettypitch_leapsinger"), code=code,
         models={k: _resolve(d, v) for k, v in (y.get("models") or {}).items()},
         singers=[Singer(int(s["id"]), str(s["name"])) for s in y.get("singers") or []],
-        default_vocoder=y.get("default_vocoder", ""), credits=y.get("credits", ""), raw=y)
+        default_vocoder=y.get("default_vocoder", ""), credits=y.get("credits", ""),
+        publish=bool(y.get("publish", True)), breaths=_resolve(d, y.get("breaths")), raw=y)
 
 
 def load_vocoder(d: Path) -> VocoderSpec:

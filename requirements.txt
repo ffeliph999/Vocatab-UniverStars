@@ -1,0 +1,11 @@
+# Python のエンジン（engine/server.py）に要るもの。ブラウザ版だけを使うなら不要。
+# PrettyPitch（https://github.com/wavtechyukky/PrettyPitch）はこのリポジトリの隣に clone する（README を参照）。
+numpy
+scipy
+librosa
+onnxruntime
+fastapi
+uvicorn
+pydantic
+pyyaml
+torch        # PrettyPitch（楽譜の読み込み・子音の長さの特徴量）が使う。CPU 版でよい

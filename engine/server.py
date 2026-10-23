@@ -1,13 +1,18 @@
-"""SVS Editor のサーバー: 画面（ui/）を配り、エンジンの API を出す。
+"""Python のエンジンのサーバー: 画面（ui/）を配り、エンジンの API を出す。
 
-    python svs_editor/engine/server.py         → http://127.0.0.1:8090/（--port で変える）
+    python engine/server.py         → http://127.0.0.1:8090/（--port で変える）
+
+配る index.html には window.SVS_ENGINE = "server" を差し込むので、開くだけで画面はこのエンジンを使う
+（?engine=web を付けるとブラウザの中のエンジン。そのために web_index.json・voicebanks/・vocoders/ も配る）。
 
 API（配列は float32 を base64 にしたもの。mel は bin ごとに並べた [128 × T]）:
     GET  /api/info        ボイスバンクとボコーダの一覧
-    POST /api/analyze     トラックの音符 → 句ごとの音素・長さ・F0 の部品（plain・vib・uv）
-    POST /api/synthesize  句の鍵 ＋ 画面で組み立てた最後の F0 → 波形・mel（① ボコーダの入力、③ 出た音）
+    POST /api/analyze     トラックの音符 → フレーズごとの音素・長さ・F0 の部品（plain・vib・uv）
+    POST /api/synthesize  フレーズの鍵 ＋ 画面で組み立てた最後の F0 → 波形・mel（① ボコーダの入力、③ 出た音）
+    GET  /api/breaths     ボイスバンクのブレスのパターンの一覧（?voicebank=）
+    POST /api/breath      ブレス 1 つ（voicebank・index・vocoder）→ 波形（画面がフレーズの波形に足す。声の調整は音量だけ）
 
-句ごとの解析の結果は取っておき（中身が同じ句は計算し直さない）、synthesize はその鍵で呼ぶ。
+フレーズごとの解析の結果は取っておき（中身が同じフレーズは計算し直さない）、synthesize はその鍵で呼ぶ。
 """
 from __future__ import annotations
 
@@ -28,6 +33,7 @@ if str(ROOT) not in sys.path:
 import numpy as np  # noqa: E402
 import uvicorn  # noqa: E402
 from fastapi import FastAPI, HTTPException  # noqa: E402
+from fastapi.responses import FileResponse, HTMLResponse  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 from pydantic import BaseModel  # noqa: E402
 
@@ -52,7 +58,15 @@ def engine(key: str) -> PrettyPitchLeapSinger:
             # 最初の解析のときにモデルを読む（ふだんは 2 秒ほど。Mac を起動し直した後などの初回は 30 秒ほど）
             print(f"モデルを読み込み中: {VBS[key].name} …", flush=True)
             t0 = time.time()
-            _engines[key] = PrettyPitchLeapSinger(VBS[key])
+            try:
+                _engines[key] = PrettyPitchLeapSinger(VBS[key])
+            except Exception as e:
+                # PrettyPitch が無い・言語パックが無い（例: 韓国語は PrettyPitch の対応ブランチが要る）など。
+                # 起動は止めず、このボイスバンクを使おうとしたときだけ知らせる
+                pp = VBS[key].code.get("prettypitch")
+                raise HTTPException(400, f"ボイスバンク「{VBS[key].name}」を読めません: {e}"
+                                    f"（PrettyPitch の場所: {pp}。voicebank.yaml の code.prettypitch か"
+                                    "環境変数 PRETTYPITCH_ROOT で変えられます）") from e
             print(f"モデルを読み込みました（{time.time() - t0:.1f} 秒）", flush=True)
         return _engines[key]
 
@@ -165,6 +179,29 @@ def synthesize(r: SynthReq):
     return out
 
 
+@app.get("/api/breaths")
+def breaths(voicebank: str):
+    return engine(voicebank).breath_index()
+
+
+class BreathReq(BaseModel):
+    voicebank: str
+    index: int
+    vocoder: str
+
+
+@app.post("/api/breath")
+def breath(r: BreathReq):
+    eng = engine(r.voicebank)
+    if r.vocoder not in VOCS:
+        raise HTTPException(404, f"ボコーダがありません: {r.vocoder}")
+    idx, _ = eng.load_breaths()
+    if not (0 <= r.index < len(idx["clips"])):
+        raise HTTPException(404, f"ブレスがありません: {r.index}")
+    wav = eng.breath(r.index, VOCS[r.vocoder])
+    return {"frames": int(idx["clips"][r.index]["frames"]), "sample_rate": 44100, "wav": b64(wav)}
+
+
 @app.middleware("http")
 async def no_cache(request, call_next):
     """画面のファイル（index.html・dist/app.js など）は毎回新しいか確かめさせる。
@@ -175,6 +212,29 @@ async def no_cache(request, call_next):
     return resp
 
 
+_ENGINE_TAG = '<script>window.SVS_ENGINE = "server";</script>\n'
+
+
+@app.get("/")
+@app.get("/index.html")
+def index_page():
+    """画面の index.html に「このページは Python のエンジンを使う」印を差し込んで返す（client.ts の makeEngine が見る）。
+    毎回読むので、index.html を直してもサーバーを立ち上げ直さなくてよい。"""
+    html = (ROOT / "ui" / "index.html").read_text(encoding="utf-8")
+    anchor = '<script type="module" src="dist/app.js">'
+    return HTMLResponse(html.replace(anchor, _ENGINE_TAG + anchor, 1) if anchor in html else html)
+
+
+# ブラウザの中のエンジン（?engine=web）をこのサーバーで試すときに要るもの。重み（.onnx）も配るので、
+# --host を外に開けるときは注意（既定は 127.0.0.1）
+@app.get("/web_index.json")
+def web_index():
+    return FileResponse(ROOT / "web_index.json")
+
+
+for _sub in ("voicebanks", "vocoders"):
+    if (ROOT / _sub).is_dir():
+        app.mount(f"/{_sub}", StaticFiles(directory=str(ROOT / _sub)), name=_sub)
 app.mount("/", StaticFiles(directory=str(ROOT / "ui"), html=True), name="ui")
 
 

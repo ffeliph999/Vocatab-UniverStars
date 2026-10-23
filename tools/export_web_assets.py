@@ -52,6 +52,9 @@ def main():
     vbs, vocs = scan(ROOT)
     index = {"voicebanks": [], "vocoders": []}
     for key, vb in vbs.items():
+        if not vb.publish:    # voicebank.yaml の publish: false（公開しないもの。Python のエンジンでは使える）
+            print(f"{key}: publish: false なので web_index.json には載せない")
+            continue
         pp_root = str(vb.code["prettypitch"])
         if pp_root not in sys.path:
             sys.path.insert(0, pp_root)
@@ -71,6 +74,8 @@ def main():
                "models": {"acoustic": rel(m["acoustic"]), "f0": rel(m["f0"]), "cons_dur": rel(m["cons_dur"])},
                "phoneset": phoneset_json(ps, mora), "profile": profile_json(profile, ps, [s.id for s in vb.singers]),
                "f0": f0cfg, "cons_dur": cons_cfg, "speakers": spk}
+        if vb.breaths and vb.breaths.exists():
+            web["breaths"] = rel(vb.breaths)   # ブレスの mel の一覧（breaths.json。bin はその中に書いてある）
         path = vb.dir / "web.json"
         path.write_text(json.dumps(web, ensure_ascii=False), encoding="utf-8")
         index["voicebanks"].append({**vb.to_json(), "web": rel(path)})

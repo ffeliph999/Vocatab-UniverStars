@@ -163,7 +163,74 @@ class PrettyPitchLeapSinger:
         self._vocoders: dict[str, ort.InferenceSession] = {}
         self._ac_cache = _LRU(64)          # ⑤⑥ の結果（mel ①）
         self._voc_cache = _LRU(48)         # ⑦ の結果（調波・雑音・包絡。6 秒の句で約 5 MB）
+        self._breaths: tuple[dict, np.ndarray] | None = None   # ブレスの mel の束（breaths.json・breaths.bin）。初めて要るとき読む
+        self._breath_cache: dict[tuple[int, str], np.ndarray] = {}
         self.lock = threading.Lock()       # onnxruntime のセッションを 1 本ずつ使う
+
+    # ── ブレス（録音ではなく mel を持ち、ボコーダだけで鳴らす。tools/breaths/build_breath_bank.py が作る） ──
+    BREATH_F0 = 220.0   # 全フレーム無声なので調波は出ない。0 を避けるためのダミー
+    BREATH_PAD = 4      # 前後に足す ln(1e-5) のフレーム（ボコーダのフィルタの立ち上がりを吸収し、後で切る）
+    BREATH_RAMP_SEC = 0.05  # 両端の Tukey 窓の長さ（短い素材では長さの 1/4）
+
+    @classmethod
+    def _tukey(cls, sec: np.ndarray, length: float) -> np.ndarray:
+        """Tukey 窓の値（0〜1）: 頭と尻尾を ramp 秒ずつ余弦で立ち上げ・下げる（ブラウザ版 core.ts の tukey と同じ）。"""
+        r = min(cls.BREATH_RAMP_SEC, length / 4)
+        if r <= 0:
+            return np.ones_like(sec)
+        d = np.minimum(sec, length - sec)
+        return np.where(d >= r, 1.0, np.where(d <= 0, 0.0, 0.5 * (1 - np.cos(np.pi * d / r))))
+
+    def load_breaths(self) -> tuple[dict, np.ndarray]:
+        if self._breaths is None:
+            p = self.vb.breaths
+            if p and p.exists():
+                idx = json.loads(p.read_text(encoding="utf-8"))
+                data = np.frombuffer((p.parent / idx["bin"]).read_bytes(), dtype="<f2")
+                self._breaths = (idx, data)
+            else:
+                self._breaths = ({"clips": []}, np.zeros(0, np.float16))
+        return self._breaths
+
+    def breath_index(self) -> dict:
+        """画面に渡す一覧（ブラウザ版の core.ts の breaths と同じ中身）。"""
+        idx, _ = self.load_breaths()
+        return {"clips": [{"id": c["id"], "singer": int(c["singer"]), "frames": int(c["frames"]), "sec": float(c["sec"])}
+                          for c in idx["clips"]]}
+
+    def breath(self, index: int, voc: VocoderSpec) -> np.ndarray:
+        """ブレス 1 つ → 波形 [256·frames]。ブレスはフレーズのボコーダには入れず（声の調整は音量だけ）、別に鳴らして画面が
+        波形で足す。mel に詰め物を付け、f0 一定・uv = 1 でボコーダを通し、声と同じ後段（ボイスパラメータは既定値 → 調波 + 雑音と
+        リミッタだけ）を経て詰め物を切り、両端に Tukey 窓を掛ける。ブラウザ版（core.ts の breath）と同じ手順。"""
+        key = (int(index), voc.key)
+        hit = self._breath_cache.get(key)
+        if hit is not None:
+            return hit
+        idx, data = self.load_breaths()
+        c = idx["clips"][index]
+        F, P = int(c["frames"]), self.BREATH_PAD
+        mel = data[int(c["offset"]):int(c["offset"]) + 128 * F].astype(np.float32).reshape(128, F)
+        if c.get("gain_db"):
+            mel = (mel + np.float32(np.log(10 ** (float(c["gain_db"]) / 20)))).astype(np.float32)
+        T = F + 2 * P
+        mel_p = np.pad(mel, ((0, 0), (P, P)), constant_values=np.float32(np.log(1e-5))).astype(np.float32)
+        f0 = np.full(T, self.BREATH_F0, np.float32)
+        uv_hard = np.zeros(T, np.float32)
+        noise = np.random.default_rng([7000 + int(index), 2]).standard_normal((1, 1, T, 256)).astype(np.float32)
+        with self.lock:
+            harm, nz, wav0, env_h, env_n = self._vocode(voc, mel_p, f0, uv_hard, noise)
+        g = np.float32(10 ** (voc.gain_db / 20)) if voc.gain_db else np.float32(1.0)
+        if harm is not None and voc.voice_params:
+            h, z = VP.spectral(harm, nz, env_h, env_n, {}, T)
+            wav = VP.branch_mix(h, z, uv_hard, {}, np.zeros(T, bool)) * g
+        else:
+            wav = (np.clip(harm + nz, -1.0, 1.0) if wav0 is None else wav0) * g
+        wav = VP.finish(wav[:T * 256], {}, T)[P * 256:(P + F) * 256]
+        # 両端を Tukey 窓でなだらかに
+        length = F * 256 / 44100
+        wav = (wav * self._tukey((np.arange(len(wav)) + 0.5) / 44100, length)).astype(np.float32)
+        self._breath_cache[key] = wav
+        return wav
 
     # ── 楽譜 → 句 ─────────────────────────────────────────
     def phrases_from_notes(self, notes: list[dict], bpm: float, tpq: int = 480):
