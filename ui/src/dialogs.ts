@@ -1,7 +1,7 @@
 // ダイアログ: 書き出し（WAV）と設定（言語・差し色・mel の配色）。
 import { buildExports, download } from "./export";
 import { getLang, type Lang, LANGS, t } from "./i18n";
-import { assembleWav, type Renderer } from "./render";
+import type { Renderer } from "./render";
 import type { Store } from "./store";
 import {
   ACCENT_PRESETS, DEFAULT_ACCENT, getAccent, getGpu, getMelMap, MEL_MAPS, type MelMapKey, melGradient, setAccent, setGpu,
@@ -44,9 +44,9 @@ export function openExportDialog(store: Store, engine: Renderer | null): void {
   body.className = "dlg-body";
   body.innerHTML = `
     <div class="row2"><span>${t("ファイル名")}</span><input id="ex-name" type="text"></div>
-    <div class="dlg-sub">${t("書き出すもの")}</div>
+    <div class="dlg-sub">${t("書き出す対象")}</div>
     <div class="check-list" id="ex-list"></div>
-    <div class="btn-row"><button class="small" id="ex-all">${t("全部選ぶ")}</button><button class="small" id="ex-none">${t("全部外す")}</button></div>
+    <div class="btn-row"><button class="small" id="ex-all">${t("すべて選択")}</button><button class="small" id="ex-none">${t("すべて解除")}</button></div>
     <div class="dlg-sub">${t("形式（44.1 kHz）")}</div>
     <div class="row2"><span>${t("チャンネル")}</span><select id="ex-ch"><option value="2">${t("ステレオ")}</option><option value="1">${t("モノ（パンは掛けない）")}</option></select></div>
     <div class="row2"><span>${t("ビット深度")}</span><select id="ex-bits"><option value="16">16 bit</option>
@@ -88,7 +88,7 @@ export function openExportDialog(store: Store, engine: Renderer | null): void {
       c.addEventListener("change", () => { set(c.checked); update(); });
       list.appendChild(l);
     };
-    add(t("ミックス（全トラックをまとめる。消音・ソロに従う）"), "var(--accent)", o.mixdown, (v) => { o.mixdown = v; });
+    add(t("ミックス（全トラックをまとめる。ミュート・ソロに従う）"), "var(--accent)", o.mixdown, (v) => { o.mixdown = v; });
     for (const tr of p.tracks) {
       add(tr.name, trackColor(p, tr), o.trackIds.includes(tr.id), (v) => {
         o.trackIds = v ? [...o.trackIds, tr.id] : o.trackIds.filter((x) => x !== tr.id);
@@ -105,7 +105,7 @@ export function openExportDialog(store: Store, engine: Renderer | null): void {
     const pending = engine?.connected ? engine.pending() : -1;
     const n = (o.mixdown ? 1 : 0) + o.trackIds.length;
     go.disabled = pending !== 0 || n === 0 || exporting;
-    go.textContent = exporting ? t("書き出し中…") : pending > 0 ? t("描画中（あと {n} 句）", { n: pending })
+    go.textContent = exporting ? t("書き出し中…") : pending > 0 ? t("レンダリング中（残り {n} フレーズ）", { n: pending })
       : t("書き出す（{n} ファイル）", { n });
     if (!exporting && !msg.dataset.done) {
       msg.textContent = pending < 0 ? t("エンジンにつながっていないので書き出せません。")
@@ -120,7 +120,7 @@ export function openExportDialog(store: Store, engine: Renderer | null): void {
     if (!engine) return;
     exporting = true;
     update();
-    void buildExports(p, (tr) => assembleWav(engine.phrases(tr)), o).then((files) => {
+    void buildExports(p, (tr) => engine.trackWav(tr), o).then((files) => {
       download(files);
       msg.dataset.done = "1";
       msg.textContent = t("書き出しました: {names}", { names: files.map((f) => f.name).join(", ") });
@@ -145,11 +145,11 @@ export function openSettingsDialog(onLang: (l: Lang) => void = () => undefined):
     const acc = getAccent();
     const mm = getMelMap();
     body.innerHTML = `
-      <div class="dlg-sub">${t("画面の言語")}<span class="h-note">${t("変えると画面を読み込み直します（編集中の内容は自動保存から続きます）")}</span></div>
+      <div class="dlg-sub">${t("画面の言語")}<span class="h-note">${t("変更するとページを再読み込みします（編集内容は自動保存から復元されます）")}</span></div>
       <div class="seg langs">${LANGS.map(([k, label]) => `<button data-lang="${k}" class="${k === getLang() ? "on" : ""}">${label}</button>`).join("")}</div>
-      <div class="dlg-sub">${t("差し色")}<span class="h-note">${t("音符・選んだ所・つまみの色。トラックの色もここから作ります")}</span></div>
+      <div class="dlg-sub">${t("アクセントカラー")}<span class="h-note">${t("音符・選んだ所・つまみの色。トラックの色もここから作ります")}</span></div>
       <div class="swatches">${ACCENT_PRESETS.map((c) => `<button class="sw${c === acc ? " on" : ""}" data-c="${c}" style="background:${c}" title="${c}"></button>`).join("")}
-        <label class="sw-pick" title="${t("好きな色を選ぶ")}"><input type="color" id="acc-pick" value="${acc}"><span>${t("自由に")}</span></label>
+        <label class="sw-pick" title="${t("好きな色を選ぶ")}"><input type="color" id="acc-pick" value="${acc}"><span>${t("自由選択")}</span></label>
         <button class="small" id="acc-reset">${t("既定に戻す")}</button></div>
       <div class="dlg-sub">${t("mel の配色")}<span class="h-note">${t("下のパネルの mel の色")}</span></div>
       <div class="melmaps">${(Object.keys(MEL_MAPS) as MelMapKey[]).map((k) => `

@@ -43,6 +43,18 @@ export interface VoicebankWeb {
   f0: Record<string, any>; // f0.json（frame_rate・phonemes・nucleus・pitch_center・n_noise・n_styles・baseline_sigma_sec など）
   cons_dur: Record<string, any>; // cons_dur.json
   speakers: { phonemes: string[]; speakers: Record<string, number[]> };
+  /** ブレスの mel の一覧（breaths.json）の場所。無いボイスバンクはブレスを入れられない */
+  breaths?: string;
+}
+
+/** voicebanks/<名前>/breaths.json（tools/breaths/build_breath_bank.py が書く）。mel は float16 の bin に [128, frames] 行優先で並ぶ */
+export interface BreathBank {
+  version: number;
+  bin: string;        // breaths.json から見た相対
+  bin_bytes: number;
+  n_mels: number;
+  hop: number;
+  clips: Array<{ id: string; singer: number; offset: number; frames: number; sec: number; gain_db: number }>;
 }
 
 /** web_index.json の 1 行 */

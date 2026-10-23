@@ -94,7 +94,7 @@ export class FileMenu {
     m.className = "pop-menu";
     Object.assign(m.style, { left: `${r.left}px`, top: `${r.bottom + 4}px` });
     const items: Array<[string, string, () => void]> = [
-      [tx("新規"), tx("見本の曲から始める"), () => void this.newProject()],
+      [tx("新規"), tx("サンプル曲から始める"), () => void this.newProject()],
       [tx("開く…"), tx("⌘O　.svsproj か、音声も含めた .zip"), () => void this.openFile()],
       [tx("保存"), "⌘S", () => void this.save()],
       [tx("名前を付けて保存…"), "⇧⌘S", () => void this.saveAs()],
@@ -122,7 +122,7 @@ export class FileMenu {
 
   // ── 新規・開く ──────────────────────────────
   private async newProject(): Promise<void> {
-    if (!window.confirm(tx("今のプロジェクトを閉じて、見本の曲から始めますか？（保存していない変更は消えます）"))) return;
+    if (!window.confirm(tx("今のプロジェクトを閉じて、サンプル曲から始めますか？（保存していない変更は消えます）"))) return;
     this.handle = null;
     this.dirty = false;
     if (this.autosaveOn) await clearAutosave();
@@ -180,7 +180,7 @@ export class FileMenu {
     const render = () => {
       const miss = missingAudio(p);
       box.innerHTML = `<h3>${tx("伴奏の音声が見つかりません")}</h3>
-        <p class="hint">${tx("プロジェクトのファイルには伴奏の音声そのものは入っていません。元の音声ファイルを選んでください（複数まとめて選べます。中身の指紋で照合するので、ファイルの置き場所や名前が変わっていてもかまいません）。")}</p>
+        <p class="hint">${tx("プロジェクトファイルには伴奏の音声は含まれていません。元の音声ファイルを選択してください（複数選択可。内容で照合するため、移動や名前変更があっても問題ありません）。")}</p>
         <ul class="miss-list">${miss.map((m) => `<li>${m.fileName ?? m.name}</li>`).join("")}</ul>
         <div class="btn-row"><button class="small" id="rl-pick">${tx("ファイルを選ぶ…")}</button>
           <button class="small" id="rl-later">${tx("あとで（音を出さずに続ける）")}</button></div><p class="hint" id="rl-msg"></p>`;
@@ -192,12 +192,12 @@ export class FileMenu {
         this.store.changed("project");
         if (!missingAudio(p).length) {
           back.remove();
-          this.hint(tx("伴奏をつなぎ直しました: {names}", { names: r.linked.join(", ") }));
+          this.hint(tx("伴奏を再リンクしました: {names}", { names: r.linked.join(", ") }));
           return;
         }
         render();
-        box.querySelector("#rl-msg")!.textContent = r.linked.length ? tx("つなぎました: {names}", { names: r.linked.join(", ") })
-          : tx("合うファイルがありませんでした: {names}", { names: r.unmatched.join(", ") });
+        box.querySelector("#rl-msg")!.textContent = r.linked.length ? tx("リンクしました: {names}", { names: r.linked.join(", ") })
+          : tx("一致するファイルが見つかりませんでした: {names}", { names: r.unmatched.join(", ") });
       })());
     };
     render();

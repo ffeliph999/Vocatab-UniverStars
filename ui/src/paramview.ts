@@ -12,7 +12,7 @@ import { ICONS } from "./icons";
 import { type ParamKey, secPerTick, type Track, type VoiceBase } from "./model";
 import { EraseStroke, ensureCurve, evalCurve, lineRange, PARAMS, paramDef, PenStroke } from "./params";
 import type { Store } from "./store";
-import { KEY_W, type View } from "./view";
+import { KEY_W, type View, wheelScrollX } from "./view";
 
 type PTool = "pen" | "line" | "eraser";
 const PAD = 10;
@@ -62,6 +62,7 @@ export class ParamPanel {
     canvas.addEventListener("pointermove", (e) => this.onMove(e));
     canvas.addEventListener("pointerup", () => this.onUp());
     canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+    canvas.addEventListener("wheel", (e) => wheelScrollX(this.view, e), { passive: false }); // 横スクロールと横の拡大縮小
     this.renderHead();
   }
 
@@ -83,14 +84,14 @@ export class ParamPanel {
         .map((p) => `<option value="${p.key}" ${p.key === key ? "selected" : ""}>${p.label}</option>`).join("");
       const vis = !this.hidden.has(key);
       return `<div class="pp-tab${key === this.editKey ? " front" : ""}" data-i="${i}" style="--pc:${PARAM_COLOR[key]}">
-        <button class="pp-eye${vis ? " on" : ""}" title="${tr("見せる・隠す")}">${vis ? EYE_ON : EYE_OFF}</button>
-        <button class="pp-name" title="${tr("クリック: 手前に出す（描くのはいちばん手前の曲線）")}">${d.label}</button>
+        <button class="pp-eye${vis ? " on" : ""}" title="${tr("表示/非表示")}">${vis ? EYE_ON : EYE_OFF}</button>
+        <button class="pp-name" title="${tr("クリックで前面に表示（編集できるのは最前面の曲線）")}">${d.label}</button>
         <label class="pp-pick" title="${tr("パラメータを選び直す")}">${UPDOWN}<select>${opts}</select></label>
         ${this.tabs.length > 1 ? `<button class="pp-close" title="${tr("この曲線を閉じる")}">✕</button>` : ""}
       </div>`;
     }).join("");
     this.head.innerHTML = `<div class="pp-tabs">${tabHtml}
-        ${this.tabs.length < PARAMS.length ? `<button class="icon-btn pp-add" title="${tr("曲線を足す")}">＋</button>` : ""}</div>
+        ${this.tabs.length < PARAMS.length ? `<button class="icon-btn pp-add" title="${tr("曲線を追加")}">＋</button>` : ""}</div>
       <div class="tool-group">
         <button class="icon-btn ${this.tool === "pen" ? "active" : ""}" data-tool="pen" title="${tr("鉛筆")}">${ICONS.draw}</button>
         <button class="icon-btn ${this.tool === "line" ? "active" : ""}" data-tool="line" title="${tr("直線")}">${ICONS.line}</button>
@@ -213,7 +214,7 @@ export class ParamPanel {
     this.head.querySelector(".pp-value")!.textContent = `${d.label}: ${d.fmt(this.shown(key, t))}`;
     const g = this.drag;
     if (!g) {
-      this.hint(tr("ドラッグ: いちばん手前の曲線を描く　右ドラッグ: 消す（既定値に戻す）　札の名前を押すと手前に出る"));
+      this.hint(tr("ドラッグ: 最前面の曲線を描く　右ドラッグ: 消去（初期値に戻す）　タブ名をクリックで前面に表示"));
       return;
     }
     if (g.pen) {

@@ -22,6 +22,8 @@ export interface Note {
   attrs: NoteAttrs;
   /** 手で動かした音素の頭（この音符の中の音素の番号 → 既定の位置からのずれ、秒）。句の頭は動かせない */
   phShift?: Record<number, number>;
+  /** この音符の前に入れたブレス（ボイスバンクのブレスの束の中の番号）。無ければ入れていない（breath.ts） */
+  breath?: { index: number };
 }
 
 /** トラック全体の声の設定（フレームごとのパラメータの曲線はこれに足す）。 */

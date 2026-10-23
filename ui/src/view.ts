@@ -54,3 +54,17 @@ export class View {
     for (const fn of this.listeners) fn();
   }
 }
+
+/**
+ * 下のパネル（パラメータ・音素のタイミング・mel）のホイール: ピアノロールと同じく時間軸を動かす。
+ * トラックパッドの横スクロール（deltaX）か Shift + 縦で横に動き、⌘/Ctrl + 縦で横の拡大縮小。縦だけのホイールは何もしない
+ */
+export function wheelScrollX(v: View, e: WheelEvent): void {
+  e.preventDefault();
+  if (e.ctrlKey || e.metaKey) {
+    v.zoomX(Math.exp(-e.deltaY * 0.003), Math.max(KEY_W, e.offsetX));
+    return;
+  }
+  const dx = e.shiftKey ? e.deltaY : e.deltaX;
+  if (dx) v.scrollBy(dx / v.pxPerTick, 0);
+}

@@ -70,7 +70,7 @@ export class Arrangement {
       if (this.menu) this.closeMenu();
       else this.openMenu(addButton.getBoundingClientRect(), [
         [tr("歌のトラック"), tr("音符を描いて歌わせる"), () => this.addVocalTrack()],
-        [tr("伴奏のトラック"), tr("音声ファイルを選ぶ（画面に落としても足せる）"), () => this.filePick.click()],
+        [tr("伴奏のトラック"), tr("音声ファイルを選択（画面にドロップしても追加できます）"), () => this.filePick.click()],
       ]);
     });
     if (resizer) this.hookResizer(resizer);
@@ -145,7 +145,7 @@ export class Arrangement {
       el.addEventListener("dragover", (e) => {
         if ([...(e.dataTransfer?.items ?? [])].some((it) => it.kind === "file")) {
           e.preventDefault();
-          this.hint(tr("離す: 音声ファイルを伴奏のトラックとして、ここに足す"));
+          this.hint(tr("ドロップすると伴奏トラックとして追加します"));
         }
       });
       el.addEventListener("drop", (e) => {
@@ -153,7 +153,7 @@ export class Arrangement {
         const files = [...(e.dataTransfer?.files ?? [])].filter(isAudioFile);
         const tick = el === canvas ? Math.max(0, Math.round(this.xToTick(e.offsetX))) : this.barAtPlayhead();
         for (const f of files) void this.addAudioTrack(f, tick);
-        if (!files.length) this.hint(tr("音声ファイル（wav・mp3・flac など）を落としてください"));
+        if (!files.length) this.hint(tr("音声ファイル（wav・mp3・flac など）をドロップしてください"));
       });
     }
     window.addEventListener("pointerdown", () => this.closeMenu());
@@ -323,7 +323,7 @@ export class Arrangement {
   private trackMenu(t: Track, x: number, y: number): void {
     this.openMenu({ left: x, bottom: y - 4 }, [
       [tr("名前を変える"), "", () => this.startRename(t)],
-      [tr("トラックを消す"), tr("⌘Z で戻せます"), () => this.deleteTrack(t)],
+      [tr("トラックを削除"), tr("⌘Z で戻せます"), () => this.deleteTrack(t)],
     ]);
   }
 
@@ -345,7 +345,7 @@ export class Arrangement {
     s.commit(before);
     s.changed("project");
     this.renderList();
-    this.hint(tr("トラックを消しました: {name}（⌘Z で戻せます）", { name: t.name }));
+    this.hint(tr("トラックを削除しました: {name}（⌘Z で戻せます）", { name: t.name }));
   }
 
   private startRename(t: Track): void {
@@ -436,7 +436,7 @@ export class Arrangement {
     s.changed("project");
     this.renderList();
     this.scrollToLane(p.tracks.length - 1);
-    this.hint(tr("伴奏のトラックを足しました: {name}（{sec} 秒）", { name: file.name, sec: dur.toFixed(1) }));
+    this.hint(tr("伴奏トラックを追加しました: {name}（{sec} 秒）", { name: file.name, sec: dur.toFixed(1) }));
   }
 
   // ── 箱の操作 ───────────────────────────────
@@ -458,27 +458,27 @@ export class Arrangement {
     const c = this.hc.canvas;
     if (y < HEAD) {
       c.style.cursor = "pointer";
-      this.hint(tr("クリック・ドラッグ: 再生位置を動かす"));
+      this.hint(tr("クリック・ドラッグ: 再生位置を移動"));
       return;
     }
     if (y > this.hc.h - SB) {
       c.style.cursor = "default";
-      this.hint(tr("ドラッグ: 左右に動かす　⌘/Ctrl+ホイール・ピンチ: 時間方向の拡大縮小"));
+      this.hint(tr("ドラッグ: 左右に移動　⌘/Ctrl+ホイール・ピンチ: 時間方向の拡大縮小"));
       return;
     }
     const hit = this.hitBox(x, y);
     const audio = hit && isAudioTrack(hit.track);
     if (hit?.grab === "move") {
       c.style.cursor = "grab";
-      this.hint(audio ? tr("ドラッグ: 伴奏を動かす（拍に吸着しない）　右クリック: 名前を変える・消す")
-        : tr("ドラッグ: トラックを動かす（音符とパラメータの曲線も一緒に）　⌥+ドラッグ: 拍に吸着させない　右クリック: 名前を変える・消す"));
+      this.hint(audio ? tr("ドラッグ: 伴奏を移動（スナップしない）　右クリック: 名前を変える・削除")
+        : tr("ドラッグ: トラックを移動（音符とパラメータの曲線も一緒に）　⌥+ドラッグ: スナップしない　右クリック: 名前を変える・削除"));
     } else if (hit) {
       c.style.cursor = "ew-resize";
-      this.hint(audio ? tr("ドラッグ: 伴奏の鳴らす範囲を詰める・戻す（拍に吸着しない）")
-        : tr("ドラッグ: トラックの範囲を変える（範囲の外の音符は歌わない）　⌥+ドラッグ: 拍に吸着させない"));
+      this.hint(audio ? tr("ドラッグ: 伴奏の再生範囲を詰める・戻す（スナップしない）")
+        : tr("ドラッグ: トラックの範囲を変更（範囲の外の音符は歌わない）　⌥+ドラッグ: スナップしない"));
     } else {
       c.style.cursor = "default";
-      this.hint(tr("クリック・ドラッグ: ピアノロールで見る所を動かす　ホイール: 上下　Shift+ホイール: 左右　⌘/Ctrl+ホイール・ピンチ: 拡大縮小　音声ファイルを落とす: 伴奏のトラックを足す"));
+      this.hint(tr("クリック・ドラッグ: ピアノロールの表示位置を移動　ホイール: 上下　Shift+ホイール: 左右　⌘/Ctrl+ホイール・ピンチ: 拡大縮小　音声ファイルをドロップ: 伴奏トラックを追加"));
     }
   }
 
@@ -566,7 +566,7 @@ export class Arrangement {
         const b = document.createElement("button");
         b.className = "ms" + (t[key] ? " on" : "");
         b.textContent = key === "mute" ? "M" : "S";
-        b.title = key === "mute" ? tr("消音") : tr("このトラックだけ");
+        b.title = key === "mute" ? tr("ミュート") : tr("ソロ");
         b.addEventListener("click", (e) => {
           e.stopPropagation();
           const b0 = this.store.snapshot();

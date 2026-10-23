@@ -1,5 +1,6 @@
-// 音符から作るもの: 音素のタイミングとピッチの線。エンジンの結果があればそれから、無ければモック
+// 音符から作るもの: 音素のタイミングとピッチの線、ブレスを入れられる所。エンジンの結果があればそれから、無ければモック
 // （音素はかなの規則、ピッチは PrettyPitch の土台と同じ「音符の高さの階段を σ 20 ms でならした線」だけ）。
+import { type BreathClipInfo, type BreathSlot, breathSlots } from "./breath";
 import { consonantSec, g2p, VOWELS } from "./kana";
 import { activeNotes, FPS, type Note, type Project, secPerTick, type Track } from "./model";
 import { evalCurve } from "./params";
@@ -26,6 +27,14 @@ export interface Derived {
   noDev: Float32Array; // ピッチのずれ（pitchDelta）を足す前。ピッチのペンが使う
   phones: PhoneSeg[];
   noteSec: Map<number, { start: number; end: number }>;
+  /** ブレスを入れられる所と入れてあるブレス（ブレスの束が無ければ空） */
+  breaths: BreathSlot[];
+}
+
+/** ブレスの置き方に要るもの: ボイスバンクのブレスの束の一覧と、このトラックの歌い手の id（無ければブレスは出さない） */
+export interface BreathContext {
+  clips: BreathClipInfo[];
+  singer: number;
 }
 
 
@@ -33,8 +42,8 @@ export interface Derived {
 const VOWEL_LIKE = /^[aiueoAIUEON]$/;
 
 /** エンジンの結果（句の列）から、音素のタイミングとピッチの線を作る。 */
-function fromEngine(project: Project, track: Track, phrases: EPhrase[],
-                    noteSec: Map<number, { start: number; end: number }>): Derived {
+function fromEngine(project: Project, track: Track, phrases: EPhrase[], notes: Note[],
+                    noteSec: Map<number, { start: number; end: number }>, breath?: BreathContext): Derived {
   const phones: PhoneSeg[] = [];
   let nFrames = 0;
   for (const ph of phrases) nFrames = Math.max(nFrames, ph.startFrame + ph.nFrames);
@@ -89,16 +98,21 @@ function fromEngine(project: Project, track: Track, phrases: EPhrase[],
     }
   }
   phones.sort((a, b) => a.start - b.start);
-  return { fps: FPS, pitch, noDev, phones, noteSec };
+  return { fps: FPS, pitch, noDev, phones, noteSec, breaths: slotsOf(notes, phones, noteSec, breath) };
 }
 
-export function derive(project: Project, track: Track, engine?: EPhrase[]): Derived {
+const slotsOf = (notes: Note[], phones: PhoneSeg[], noteSec: Map<number, { start: number; end: number }>,
+                 breath?: BreathContext): BreathSlot[] =>
+  breath && breath.clips.length ? breathSlots(notes, phones, noteSec, breath.clips, breath.singer) : [];
+
+/** breath: ブレスの束と歌い手。エンジンがつながっていて束のあるボイスバンクのときだけ渡す（無ければブレスの所は出ない） */
+export function derive(project: Project, track: Track, engine?: EPhrase[], breath?: BreathContext): Derived {
   const spt = secPerTick(project.bpm);
   // トラックの範囲で切った音符（範囲の外の音符は歌わない）
   const notes = activeNotes(track, project.beatsPerBar).sort((a, b) => a.onset - b.onset);
   const noteSec = new Map<number, { start: number; end: number }>();
   for (const n of notes) noteSec.set(n.id, { start: n.onset * spt, end: (n.onset + n.dur) * spt });
-  if (engine && engine.length) return fromEngine(project, track, engine, noteSec);
+  if (engine && engine.length) return fromEngine(project, track, engine, notes, noteSec, breath);
 
   const phones = phonemeTiming(notes, noteSec);
   const lastEnd = notes.length ? Math.max(...notes.map((n) => noteSec.get(n.id)!.end)) : 0;
@@ -107,7 +121,7 @@ export function derive(project: Project, track: Track, engine?: EPhrase[]): Deri
   const noDev = baselineCurve(notes, noteSec, nFrames);
   const pitch = new Float32Array(nFrames);
   for (let i = 0; i < nFrames; i++) pitch[i] = noDev[i] + evalCurve(track.params.pitchDelta, i / FPS / spt, 0) / 100;
-  return { fps: FPS, pitch, noDev, phones, noteSec };
+  return { fps: FPS, pitch, noDev, phones, noteSec, breaths: slotsOf(notes, phones, noteSec, breath) };
 }
 
 function phonemeTiming(notes: Note[], sec: Map<number, { start: number; end: number }>): PhoneSeg[] {

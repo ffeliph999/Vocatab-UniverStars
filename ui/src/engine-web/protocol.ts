@@ -74,16 +74,36 @@ export interface RestoreResp {
   restored: number;
 }
 
+/** ボイスバンクのブレスのパターンの一覧（engine/server.py の /api/breaths と同じ中身）。index は breath に渡す番号 */
+export interface BreathIndexResp {
+  clips: Array<{ id: string; singer: number; frames: number; sec: number }>;
+}
+
+/** ブレス 1 つ（/api/breath）: ブレスの mel をボコーダだけで鳴らした波形。フレーズとは別に作り、画面側で混ぜる
+ *  （フレーズを合成し直さずに済み、同じパターンは 1 回鳴らせばよい） */
+export interface BreathReq {
+  voicebank: string;
+  index: number;
+  vocoder: string;
+}
+
+export interface BreathResp {
+  frames: number;
+  wav: Float32Array; // [256·frames]
+}
+
 /** Worker への呼び出し（id は client.ts が付ける） */
 export type WorkerCall =
   | { type: "init"; base: string; gpu: boolean }
   | { type: "analyze"; req: AnalyzeReq }
   | { type: "synthesize"; req: SynthReq }
-  | { type: "restore"; entries: RestoreEntry[] };
+  | { type: "restore"; entries: RestoreEntry[] }
+  | { type: "breaths"; voicebank: string }
+  | { type: "breath"; req: BreathReq };
 
 export type WorkerMsg = WorkerCall & { id: number };
 
 export type WorkerReply =
-  | { type: "result"; id: number; result: WebIndex | AnalyzeResp | SynthResp | RestoreResp }
+  | { type: "result"; id: number; result: WebIndex | AnalyzeResp | SynthResp | RestoreResp | BreathIndexResp | BreathResp }
   | { type: "error"; id: number; error: string }
   | { type: "progress"; loaded: number; total: number };

@@ -398,28 +398,28 @@ export class PianoRoll {
     const c = this.hc.canvas;
     if (y < RULER_H) {
       c.style.cursor = "pointer";
-      this.hint(t("クリック・ドラッグ: 再生位置を動かす"));
+      this.hint(t("クリック・ドラッグ: 再生位置を移動"));
       return;
     }
     if (this.tool === "pitch" && x > KEY_W) {
       c.style.cursor = "crosshair";
-      this.hint(t("ドラッグ: ピッチの線を描く（ピッチのずれに書き込む）　右ドラッグ: 消して元に戻す"));
+      this.hint(t("ドラッグ: ピッチの線を描く（ピッチのずれに書き込む）　右ドラッグ: 消去して元に戻す"));
       return;
     }
     const hit = x > KEY_W ? this.hitNote(x, y) : null;
     if (!hit && this.regionEdge(x, y)) {
       c.style.cursor = "ew-resize";
-      this.hint(t("ドラッグ: トラックの範囲を変える（範囲の外の音符は歌わない、端をまたぐ音符は端で切れる）　⌥: 拍に吸着させない"));
+      this.hint(t("ドラッグ: トラックの範囲を変更（範囲の外の音符は歌わない、端をまたぐ音符は端で切れる）　⌥: スナップしない"));
       return;
     }
     if (hit) {
       c.style.cursor = hit.edge ? "ew-resize" : "move";
-      this.hint(hit.edge ? t("ドラッグ: 長さを変える") : t("ドラッグ: 動かす（Shift で選択に足す）　ダブルクリック: 歌詞を入力"));
+      this.hint(hit.edge ? t("ドラッグ: 長さを変更") : t("ドラッグ: 移動（Shift で選択に追加）　ダブルクリック: 歌詞を入力"));
       return;
     }
     c.style.cursor = this.tool === "draw" ? "crosshair" : "default";
     this.hint(this.tool === "draw" ? t("ドラッグ: 音符を描く") :
-      t("ドラッグ: 範囲で選ぶ　ホイール: 上下　Shift+ホイール: 左右　⌘+ホイール: 横の拡大　⌥+ホイール: 縦の拡大"));
+      t("ドラッグ: 範囲選択　ホイール: 上下　Shift+ホイール: 左右　⌘+ホイール: 横の拡大　⌥+ホイール: 縦の拡大"));
   }
 
   // ── 歌詞の入力 ─────────────────────────────

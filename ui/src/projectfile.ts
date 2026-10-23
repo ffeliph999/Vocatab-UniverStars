@@ -32,7 +32,7 @@ export function migrate(text: string): Project {
   }
   if (f.format !== FORMAT || !f.project) throw new Error(t("この SVS のプロジェクトのファイルではありません"));
   const v = f.formatVersion ?? 0;
-  if (v > FORMAT_VERSION) throw new Error(t("新しい版（{v}）で保存されたファイルです。アプリを新しくしてください", { v }));
+  if (v > FORMAT_VERSION) throw new Error(t("新しいバージョン（{v}）で保存されたファイルです。アプリを更新してください", { v }));
   const p = f.project;
   // 版 1: 決めていない値は既定値で埋める（古いファイルや手で書いたファイルのため）
   p.bpm ||= 120;

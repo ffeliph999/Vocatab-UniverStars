@@ -55,8 +55,9 @@ export function isNeutral(params: Params, keys: string[]): boolean {
   });
 }
 
-/** voiceparams._to_samples: フレームの値 → サンプルの値（3 フレームの移動平均の後、フレームの中心を結ぶ線形補間）。float32 で返す */
-function toSamples(g: ArrayLike<number>, n: number): Float32Array {
+/** voiceparams._to_samples: フレームの値 → サンプルの値（3 フレームの移動平均の後、フレームの中心を結ぶ線形補間）。float32 で返す。
+ *  画面側がブレスに「音量」の曲線を掛けるときも同じ式を使う（breath.ts） */
+export function toSamples(g: ArrayLike<number>, n: number): Float32Array {
   let v: Float64Array;
   if (g.length > 2) {
     // np.convolve(np.pad(g, 1, "edge"), ones(3)/3, "valid")（float64）

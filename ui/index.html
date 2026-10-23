@@ -14,7 +14,7 @@
   <aside id="sidebar">
     <div class="side-brand">
       <span class="brand"><span class="logo"></span>SVS Editor<span class="tag" data-i18n="モック">モック</span></span>
-      <button id="btn-settings" class="icon-btn" data-i18n-title="設定（言語・差し色・mel の配色）"></button>
+      <button id="btn-settings" class="icon-btn" data-i18n-title="設定（言語・アクセントカラー・mel の配色）"></button>
     </div>
     <div class="side-file">
       <button id="btn-file" class="menu-btn" data-i18n="ファイル ▾">ファイル ▾</button>
@@ -22,7 +22,7 @@
     </div>
     <div class="side-head">
       <span class="lbl" data-i18n="トラック">トラック</span>
-      <button id="btn-add-track" class="icon-btn add-track" data-i18n-title="トラックを足す（歌・伴奏）">＋</button>
+      <button id="btn-add-track" class="icon-btn add-track" data-i18n-title="トラックを追加（歌・伴奏）">＋</button>
     </div>
     <div id="track-list"></div>
     <div id="side-body"></div>
@@ -33,7 +33,7 @@
   <main id="main">
     <section id="card">
       <div class="card-head">
-        <button id="btn-side" class="icon-btn side-toggle" data-i18n-title="左の帯を畳む・開く"></button>
+        <button id="btn-side" class="icon-btn side-toggle" data-i18n-title="サイドバーの表示/非表示"></button>
         <span class="card-track"><span class="dot" id="cur-dot"></span><b id="cur-name"></b><span id="cur-voice" class="muted"></span></span>
         <div class="tool-group" id="tools"></div>
         <div class="tool-group" id="views"></div>
@@ -51,19 +51,19 @@
         <!-- 再生の操作（ピアノロールに重ならないよう、見出しの帯に置く） -->
         <div id="transport" class="head-transport">
           <button id="btn-play" class="icon-btn play" data-i18n-title="再生"></button>
-          <button id="btn-stop" class="icon-btn" data-i18n-title="停止して頭に戻る"></button>
-          <button id="btn-loop" class="icon-btn" data-i18n-title="ループ（次の段階）"></button>
+          <button id="btn-stop" class="icon-btn" data-i18n-title="停止して先頭に戻る"></button>
+          <button id="btn-loop" class="icon-btn" data-i18n-title="ループ（今後対応予定）"></button>
           <span class="tr-sep"></span>
           <span class="readout" id="time">00:00.00</span>
-          <span class="readout editable" id="bpm-box" data-i18n-title="クリック: テンポを変える"><span id="bpm">80.00</span><small>BPM</small></span>
-          <span class="readout editable" id="ts" data-i18n-title="クリック: 拍子を変える">4/4</span>
+          <span class="readout editable" id="bpm-box" data-i18n-title="クリック: テンポを変更"><span id="bpm">80.00</span><small>BPM</small></span>
+          <span class="readout editable" id="ts" data-i18n-title="クリック: 拍子を変更">4/4</span>
           <button id="btn-follow" class="icon-btn on" data-i18n-title="再生位置を追う"></button>
         </div>
         <span class="grow"></span>
         <button id="btn-export" class="btn primary" data-i18n-title="WAV に書き出す"></button>
       </div>
       <div id="arr-body"><canvas id="arr-canvas"></canvas></div>
-      <div id="arr-resizer" class="hresizer" data-i18n-title="上下にドラッグ: 曲の地図の高さを変える（ダブルクリック: トラックが全部見える高さ）"></div>
+      <div id="arr-resizer" class="hresizer" data-i18n-title="上下にドラッグ: トラック一覧の高さを変更（ダブルクリック: 全トラックが収まる高さ）"></div>
       <div id="pr-wrap">
         <canvas id="pr-canvas"></canvas>
         <input id="lyric-input" class="lyric-input" type="text" hidden>

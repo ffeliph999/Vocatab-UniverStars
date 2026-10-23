@@ -5,11 +5,27 @@ import { alignDurs, finishDurations, prepareDurations } from "./durations";
 import { f0Feeds, finishF0, frameNoteIndex, prepareF0 } from "./f0host";
 import { fetchCached } from "./fetchcache";
 import { wavToMel } from "./melspec";
-import type { AnalyzeReq, AnalyzeResp, RestoreEntry, SynthReq, SynthResp } from "./protocol";
+import type { AnalyzeReq, AnalyzeResp, BreathIndexResp, BreathReq, BreathResp, RestoreEntry, SynthReq, SynthResp } from "./protocol";
 import { applyRetakes, normalNoise } from "./rng";
 import { phrasesFromNotes } from "./score";
-import { acousticFeeds, finishSynth, melPostprocess, nhvFeeds, nsfFeeds, phoneSetOf, toFloat16Bits, type VocOut } from "./synthhost";
-import type { Feeds, Phrase, VoicebankWeb, VocoderWeb, WebIndex } from "./types";
+import { acousticFeeds, finishSynth, fromFloat16Bits, melPostprocess, nhvFeeds, nsfFeeds, phoneSetOf, toFloat16Bits,
+         type VocOut } from "./synthhost";
+import type { BreathBank, Feeds, Phrase, VoicebankWeb, VocoderWeb, WebIndex } from "./types";
+
+const MEL_FLOOR = Math.fround(Math.log(1e-5)); // mel の床（pau・詰め物）
+const N_MELS = 128;
+// ブレス（engine/pipeline.py の BREATH_F0・BREATH_PAD・BREATH_RAMP_SEC と同じ）
+const BREATH_F0 = 220.0; // 全フレーム無声なので調波は出ない。0 を避けるためのダミー
+const BREATH_PAD = 4; // 前後に足す床のフレーム（ボコーダのフィルタの立ち上がりを吸収し、後で切る）
+const BREATH_RAMP_SEC = 0.05; // 両端の Tukey 窓の長さ（短い素材では長さの 1/4）
+
+/** Tukey 窓の値（0〜1）: 頭と尻尾を ramp 秒ずつ余弦で立ち上げ・下げる。sec は素材の中の時刻、len は長さ（秒） */
+export function tukey(sec: number, len: number, ramp = BREATH_RAMP_SEC): number {
+  const r = Math.min(ramp, len / 4);
+  if (r <= 0) return 1;
+  const d = Math.min(sec, len - sec);
+  return d >= r ? 1 : d <= 0 ? 0 : 0.5 * (1 - Math.cos((Math.PI * d) / r));
+}
 
 // ── 取り置き ──
 
@@ -181,6 +197,7 @@ export class Engine {
   private analyses = new LRU<{ vb: string; an: Analysis; ids: number[] }>(256);
   private acCache: ByteLRU<AcousticHit>;
   private vocCache: ByteLRU<VocOut>;
+  private breathBanks = new Map<string, Promise<{ idx: BreathBank; data: Uint16Array } | null>>(); // ボイスバンク → ブレスの束
   private loading = new Map<string, { loaded: number; total: number }>();
   noise: NoiseHook = {};
 
@@ -201,8 +218,10 @@ export class Engine {
     } catch {
       this.gpu = false;
     }
-    this.index = await (await fetch(this.url("web_index.json"))).json();
-    for (const v of this.index.voicebanks) this.vbs.set(v.key, await (await fetch(this.url(v.web))).json());
+    // 設定の JSON は毎回サーバーに新しいか確かめる（cache: "no-cache"）。ブラウザが古い web.json を使い回すと、
+    // 足したばかりの項目（ブレスの束など）が見えない。中身が同じなら 304 で済む
+    this.index = await (await fetch(this.url("web_index.json"), { cache: "no-cache" })).json();
+    for (const v of this.index.voicebanks) this.vbs.set(v.key, await (await fetch(this.url(v.web), { cache: "no-cache" })).json());
     if (preload) {
       // 解析に使う小さいモデル（子音の長さ・F0）を先に、合成の大きいモデルを後ろで読み始める（ボコーダは既定のものだけ）
       for (const v of this.index.voicebanks) {
@@ -446,12 +465,78 @@ export class Engine {
     // 出た音の mel（engine/server.py の mel_of: 足りなければ ln(1e-5) で埋めて T に揃える）
     const melOf = (w: Float32Array): Float32Array => {
       const { mel, frames } = wavToMel(w);
-      const m = new Float32Array(128 * T).fill(Math.fround(Math.log(1e-5)));
-      for (let b = 0; b < 128; b++) for (let i = 0; i < Math.min(T, frames); i++) m[b * T + i] = mel[b * frames + i];
+      const m = new Float32Array(N_MELS * T).fill(MEL_FLOOR);
+      for (let b = 0; b < N_MELS; b++) for (let i = 0; i < Math.min(T, frames); i++) m[b * T + i] = mel[b * frames + i];
       return m;
     };
-    return { n_frames: T, wav: fin.wav, mel_in: ac.melIn.slice(0, 128 * T),
+    return { n_frames: T, wav: fin.wav, mel_in: ac.melIn.slice(0, N_MELS * T),
              mel_out: r.mel_out ? melOf(fin.wav) : undefined,
              mel_plain: r.mel_plain && fin.wavPlain ? melOf(fin.wavPlain) : undefined };
+  }
+
+  // ── ブレス（engine/pipeline.py の load_breaths・breath_index・breath） ──
+
+  /** ボイスバンクのブレスの束（breaths.json と float16 の bin）。無ければ null。初めて要るときに読む */
+  private breathBank(vbKey: string): Promise<{ idx: BreathBank; data: Uint16Array } | null> {
+    let p = this.breathBanks.get(vbKey);
+    if (!p) {
+      p = (async () => {
+        const vb = this.vbs.get(vbKey);
+        if (!vb?.breaths) return null;
+        const r = await fetch(this.url(vb.breaths), { cache: "no-cache" });
+        if (!r.ok) throw new Error(`ブレスの一覧を読めません: ${vb.breaths}（${r.status}）`);
+        const idx = (await r.json()) as BreathBank;
+        const binUrl = new URL(idx.bin, this.url(vb.breaths)).href;
+        const bytes = await fetchCached(binUrl, idx.bin_bytes, () => undefined); // 小さいので進み具合は出さない
+        return { idx, data: new Uint16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength >> 1) };
+      })();
+      p.catch(() => this.breathBanks.delete(vbKey)); // 失敗したら次に頼まれたとき読み直す
+      this.breathBanks.set(vbKey, p);
+    }
+    return p;
+  }
+
+  async breaths(vbKey: string): Promise<BreathIndexResp> {
+    if (!this.vbs.has(vbKey)) throw new Error(`ボイスバンクがありません: ${vbKey}`);
+    const bank = await this.breathBank(vbKey);
+    return { clips: (bank?.idx.clips ?? []).map((c) => ({ id: c.id, singer: c.singer, frames: c.frames, sec: c.sec })) };
+  }
+
+  /**
+   * ブレス 1 つ → 波形 [256·frames]。ブレスはフレーズのボコーダには入れず（声の調整は音量だけ）、別に鳴らして画面が波形で足す。
+   * mel に床の詰め物を付け、f0 一定・uv = 1（全フレーム無声）でボコーダを通し、声と同じ後段
+   * （ボイスパラメータは既定値 → 調波 + 雑音とリミッタだけ）を経て詰め物を切り、両端に Tukey 窓を掛ける。
+   * engine/pipeline.py の breath と同じ手順。mel の後処理（音量合わせ）は通さない: 全フレーム無声だと静かなブレスを持ち上げてしまうため
+   */
+  async breath(r: BreathReq): Promise<BreathResp> {
+    const bank = await this.breathBank(r.voicebank);
+    const c = bank?.idx.clips[r.index];
+    if (!bank || !c) throw new Error(`ブレスがありません: ${r.voicebank} ${r.index}`);
+    const voc = this.index.vocoders.find((v) => v.key === r.vocoder);
+    if (!voc) throw new Error(`ボコーダがありません: ${r.vocoder}`);
+    const F = c.frames;
+    const T = F + 2 * BREATH_PAD;
+    const raw = fromFloat16Bits(bank.data.subarray(c.offset, c.offset + N_MELS * F));
+    const off = c.gain_db ? Math.fround(Math.log(10 ** (c.gain_db / 20))) : 0;
+    const mel = new Float32Array(N_MELS * T).fill(MEL_FLOOR);
+    for (let b = 0; b < N_MELS; b++) {
+      for (let t = 0; t < F; t++) mel[b * T + BREATH_PAD + t] = off ? Math.fround(raw[b * F + t] + off) : raw[b * F + t];
+    }
+    const f0 = new Float32Array(T).fill(BREATH_F0);
+    const uvHard = new Float32Array(T);
+    const sess = await this.vocoderSession(voc);
+    let vo: VocOut;
+    if (voc.kind === "nhvsing") {
+      const o = await this.run(sess, nhvFeeds(mel, T, f0, uvHard, this.noise.voc?.(T) ?? normalNoise(T * 256, 7000 + r.index, 2)));
+      vo = { harmonic: o.harmonic, noise_out: o.noise_out, env_h: o.env_h, env_n: o.env_n };
+    } else {
+      vo = { waveform: (await this.run(sess, nsfFeeds(mel, T, f0), ["waveform"])).waveform };
+    }
+    const fin = finishSynth(voc, T, vo, {}, uvHard, new Uint8Array(T), false);
+    const wav = fin.wav.slice(BREATH_PAD * 256, (BREATH_PAD + F) * 256);
+    // 両端を Tukey 窓でなだらかに
+    const len = F * 256 / 44100;
+    for (let i = 0; i < wav.length; i++) wav[i] = Math.fround(wav[i] * tukey((i + 0.5) / 44100, len));
+    return { frames: F, wav };
   }
 }

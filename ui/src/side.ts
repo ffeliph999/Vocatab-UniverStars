@@ -1,5 +1,6 @@
-// 左の帯の、選んでいるトラック全体の設定: 「歌い手と声」「音作り」「描画の状況」を開け閉めできる区切りで並べる。
+// 左の帯の、選んでいるトラック全体の設定: 「歌い手と声」「エフェクター」「レンダリング」を開け閉めできる区切りで並べる。
 // 音符ごとの設定は音符の小窓（notepop.ts）、書き出しはダイアログ（dialogs.ts）。
+import { addOrCycleBreath } from "./breath";
 import type { Derived } from "./derive";
 import { FxPanel } from "./fxpanel";
 import { t as tx } from "./i18n";
@@ -86,13 +87,13 @@ const VOICE_PARAMS: Array<[keyof VoiceBase, string, number, number, number, (v: 
 type SecKey = "voice" | "fx" | "render";
 
 export class SidePanel {
-  /** エンジン（つながっていれば、描画の状況・モデルの名前・使えるボコーダを出す） */
+  /** エンジン（つながっていれば、レンダリングの状況・モデルの名前・使えるボコーダを出す） */
   engine: Renderer | null = null;
   private open = new Set<SecKey>(["voice", "fx"]);
   private refreshers: Array<() => void> = [];
   private dragging = false;
   private wasConnected = false;
-  private fx: FxPanel | null = null; // 開いている「音作り」（合成が進んだらイコライザーの後ろのスペクトルを描き直す）
+  private fx: FxPanel | null = null; // 開いている「エフェクター」（合成が進んだらイコライザーの後ろのスペクトルを描き直す）
 
   constructor(private store: Store, private body: HTMLElement, private derived: () => Derived) {
     this.render();
@@ -118,7 +119,7 @@ export class SidePanel {
   update(): void {
     const connected = !!this.engine?.connected;
     this.fx?.refreshSpectrum();
-    // 「描画の状況」の見出しの要約は、区切りを閉じていても進み具合に合わせて書き直す
+    // 「レンダリング」の見出しの要約は、区切りを閉じていても進み具合に合わせて書き直す
     const rs = this.body.querySelector<HTMLElement>('.acc[data-key="render"] .acc-s');
     if (rs) rs.textContent = this.renderSummary();
     const ae = document.activeElement;
@@ -138,7 +139,7 @@ export class SidePanel {
     if (!audio) {
       this.section("voice", tx("歌い手と声"), `${t.voice} · ${this.store.vocoder === "nsf" ? "NSF-HiFiGAN" : "NHVSing"}`,
                    (el) => this.renderVoice(el));
-      this.section("fx", tx("音作り"), this.fxSummary(), (el) => {
+      this.section("fx", tx("エフェクター"), this.fxSummary(), (el) => {
         this.fx = new FxPanel(this.store, (title) => {
           const sec = document.createElement("section");
           sec.className = "side-sec";
@@ -149,7 +150,7 @@ export class SidePanel {
         this.fx.render();
       });
     }
-    this.section("render", tx("描画の状況"), this.renderSummary(), (el) => this.renderStatus(el));
+    this.section("render", tx("レンダリング"), this.renderSummary(), (el) => this.renderStatus(el));
     this.body.scrollTop = scroll;
   }
 
@@ -189,7 +190,7 @@ export class SidePanel {
     if (!eng?.connected) return tx("エンジン未接続");
     const ps = eng.phrases(this.store.track);
     const done = ps.filter((p) => p.status === "済み").length;
-    return done < ps.length ? tx("{done}/{all} 句", { done, all: ps.length }) : tx("済み");
+    return done < ps.length ? tx("{done}/{all} フレーズ", { done, all: ps.length }) : tx("完了");
   }
 
   private renderVoice(el: HTMLElement): void {
@@ -239,7 +240,7 @@ export class SidePanel {
     }
     head.appendChild(seg);
     if (s.vocoder === "nsf") {
-      head.insertAdjacentHTML("beforeend", `<p class="hint">${tx("NSF-HiFiGAN には調波と雑音の枝が無いので、音量・うなりのほかは効きません。")}</p>`);
+      head.insertAdjacentHTML("beforeend", `<p class="hint">${tx("NSF-HiFiGAN は調波・雑音の分岐を持たないため、音量とうなり以外は効きません。")}</p>`);
       if (this.engine?.connected && !this.engine.hasVocoder("nsf")) {
         head.insertAdjacentHTML("beforeend",
           `<p class="hint warn">${tx("NSF-HiFiGAN の ONNX がまだ vocoders/ に無いので、今は NHVSing で鳴らしています。")}</p>`);
@@ -256,6 +257,39 @@ export class SidePanel {
         get: () => t.base[key], set: (v) => { t.base[key] = v; },
       }, (on) => { this.dragging = on; }));
     }
+    // ブレス: 音素のタイミングのパネルで 1 つずつ入れるほか、ここでまとめて入れる・消す。
+    // ブレスの束はエンジンから後で届くので（breathContext）、押せるかどうかはエンジンがつながっているかだけで決める
+    const br = document.createElement("div");
+    br.className = "row2";
+    br.innerHTML = `<span>${tx("ブレス")}</span><span><button class="small" id="br-all" ${eng ? "" : "disabled"}>${tx("すべてに入れる")}</button>
+      <button class="small" id="br-none" ${eng ? "" : "disabled"}>${tx("すべて消す")}</button></span>`;
+    br.querySelector("#br-all")!.addEventListener("click", () => {
+      const c = this.engine?.breathContext(t);
+      if (!c) return;
+      const before = s.snapshot();
+      let n = 0;
+      for (const slot of this.derived().breaths) {
+        if (slot.index !== null) continue;
+        const note = t.notes.find((q) => q.id === slot.noteId);
+        if (note && addOrCycleBreath(note, c)) n++;
+      }
+      if (!n) return;
+      s.commit(before);
+      s.changed("project");
+    });
+    br.querySelector("#br-none")!.addEventListener("click", () => {
+      if (!t.notes.some((q) => q.breath)) return;
+      const before = s.snapshot();
+      for (const q of t.notes) delete q.breath;
+      s.commit(before);
+      s.changed("project");
+    });
+    base.appendChild(br);
+    if (eng && eng.breathState(t) === "none") {
+      base.insertAdjacentHTML("beforeend", `<p class="hint">${tx("この歌い手にはブレスの素材がありません。")}</p>`);
+    } else if (eng) {
+      base.insertAdjacentHTML("beforeend", `<p class="hint">${tx("音素のタイミングの「+ br」をクリックしても 1 つずつ入れられます（直前の音符から 0.1 秒以上空いた音符の前）。")}</p>`);
+    }
     el.appendChild(base);
   }
 
@@ -264,7 +298,7 @@ export class SidePanel {
     sec.className = "side-sec";
     el.appendChild(sec);
     const eng = this.engine;
-    const st = (s: string) => ({ 解析済み: tx("解析済み"), 合成中: tx("合成中"), 済み: tx("済み"), 失敗: tx("失敗") } as Record<string, string>)[s] ?? s;
+    const st = (s: string) => ({ 解析済み: tx("解析完了"), 合成中: tx("合成中"), 済み: tx("完了"), 失敗: tx("失敗") } as Record<string, string>)[s] ?? s;
     if (eng?.connected) {
       if (eng.error) sec.insertAdjacentHTML("beforeend", `<p class="hint warn">${eng.error}</p>`);
       for (const t of this.store.project.tracks) {
@@ -276,7 +310,7 @@ export class SidePanel {
         eng.phrases(t).forEach((p, i) => {
           const a = p.startFrame / 172.265625;
           const b = (p.startFrame + p.nFrames) / 172.265625;
-          ul.insertAdjacentHTML("beforeend", `<li><span>${tx("句 {i}", { i: i + 1 })}</span><span>${a.toFixed(2)}–${b.toFixed(2)} s</span>
+          ul.insertAdjacentHTML("beforeend", `<li><span>${tx("フレーズ {i}", { i: i + 1 })}</span><span>${a.toFixed(2)}–${b.toFixed(2)} s</span>
             <span class="${p.status === "済み" ? "ok" : "muted"}">${st(p.status)}</span></li>`);
         });
         sec.appendChild(ul);
@@ -284,7 +318,7 @@ export class SidePanel {
       return;
     }
     sec.insertAdjacentHTML("beforeend",
-      `<p class="hint">${tx("エンジンは未接続です（モック）。句ごとの計算の状況がここに並びます。")}</p>`);
+      `<p class="hint">${tx("エンジンは未接続です（モック）。フレーズごとの計算の状況がここに並びます。")}</p>`);
     const d = this.derived();
     const phrases: Array<[number, number]> = [];
     const spans = [...d.noteSec.values()].sort((a, b) => a.start - b.start);
@@ -297,7 +331,7 @@ export class SidePanel {
     ul.className = "phrase-list";
     phrases.forEach(([a, b], i) => {
       ul.insertAdjacentHTML("beforeend",
-        `<li><span>${tx("句 {i}", { i: i + 1 })}</span><span>${a.toFixed(2)}–${b.toFixed(2)} s</span><span class="muted">${tx("未計算")}</span></li>`);
+        `<li><span>${tx("フレーズ {i}", { i: i + 1 })}</span><span>${a.toFixed(2)}–${b.toFixed(2)} s</span><span class="muted">${tx("未計算")}</span></li>`);
     });
     sec.appendChild(ul);
   }

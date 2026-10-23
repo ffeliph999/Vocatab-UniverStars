@@ -13,7 +13,7 @@ export const MEL_MAPS: Record<MelMapKey, { label: string; stops: string[] }> = {
   fuji: { label: t("藤"), stops: ["#0b0d16", "#1b1f4a", "#3f47a8", "#909dff", "#dfe3ff", "#ffffff"] },
   yozakura: { label: t("夜桜"), stops: ["#0b0d16", "#2a1440", "#74287a", "#d65f98", "#ffb3c9", "#fff4f6"] },
   ice: { label: t("氷"), stops: ["#0b0d16", "#0d2f4f", "#1f78a8", "#5fc8e8", "#c4f1ff", "#ffffff"] },
-  accent: { label: t("差し色"), stops: [] },
+  accent: { label: t("アクセントカラー"), stops: [] },
   inferno: { label: "Inferno", stops: ["#000004", "#320a5e", "#781c6d", "#bc3754", "#ed6925", "#fbb61a", "#fcffa4"] },
   viridis: { label: "Viridis", stops: ["#440154", "#414487", "#2a788e", "#22a884", "#7ad151", "#fde725"] },
   sumi: { label: t("墨"), stops: ["#0b0d16", "#3a3d4c", "#8a8ea0", "#e8e9ee"] },

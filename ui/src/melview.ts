@@ -10,7 +10,7 @@ import { FPS, secPerTick } from "./model";
 import type { Store } from "./store";
 import { t } from "./i18n";
 import { melLut, onThemeChange } from "./theme";
-import { KEY_W, type View } from "./view";
+import { KEY_W, type View, wheelScrollX } from "./view";
 
 const VS = `#version 300 es
 in vec2 p;
@@ -102,6 +102,7 @@ class MelRow {
       this.hover = null;
       this.redraw();
     });
+    ov.addEventListener("wheel", (e) => wheelScrollX(this.view, e), { passive: false }); // 横スクロールと横の拡大縮小
   }
 
   private initGl(gl: WebGL2RenderingContext): void {
@@ -251,7 +252,7 @@ class MelRow {
     ctx.fillText(this.title, KEY_W + 8, 14);
     if (!this.data) {
       ctx.fillStyle = cssVar("--muted");
-      ctx.fillText(t("計算中…（エンジンが句を合成すると出ます）"), KEY_W + 8, h / 2 + 4);
+      ctx.fillText(t("計算中…（フレーズの合成が終わると表示されます）"), KEY_W + 8, h / 2 + 4);
     }
     const hv = this.hover;
     if (hv && hv.x > KEY_W && this.data) {
@@ -275,8 +276,8 @@ class MelRow {
 
 const KINDS: Array<[MelKind, string, string]> = [
   ["acoustic", t("① ボコーダに入れる mel（postfilter 後）"), "①"],
-  ["vocoder", t("② ボコーダの出力の mel（ボイスパラメータなし）"), "②"],
-  ["final", t("③ ボイスパラメータを掛けた音の mel"), "③"],
+  ["vocoder", t("② ボコーダの出力の mel（声の調整なし）"), "②"],
+  ["final", t("③ 声の調整を掛けた音の mel"), "③"],
 ];
 const HEAD_H = 32;
 const MIN_ROW = 30;
@@ -312,10 +313,10 @@ export class MelPanel {
   private renderHead(): void {
     this.head.innerHTML = `<span>mel</span>` + KINDS.map(([, title, short], i) =>
       `<button class="chip ${this.on[i] ? "on" : ""}" data-i="${i}" title="${title}">${short} ${
-        [t("ボコーダの入力"), t("ボコーダの出力"), t("ボイスパラメータ後")][i]}</button>`).join("") +
+        [t("ボコーダの入力"), t("ボコーダの出力"), t("声の調整後")][i]}</button>`).join("") +
       `<span class="muted pp-value">${this.engineMel
-        ? t("エンジンの mel。② はボイスパラメータを掛けない音（②③ はオンのときだけ作る）")
-        : t("見せかけのデータ（エンジン未接続）。オフの行は計算しない")}</span>`;
+        ? t("エンジンの mel。② は声の調整を掛けない音（②③ はオンのときだけ作る）")
+        : t("仮のデータです（エンジン未接続）。オフの行は計算しません")}</span>`;
     for (const b of this.head.querySelectorAll<HTMLButtonElement>(".chip")) {
       b.addEventListener("click", () => {
         const i = Number(b.dataset.i);

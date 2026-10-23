@@ -1,4 +1,4 @@
-// 左の帯の「音作り」: 選んでいる（歌の）トラックのイコライザー・コンプレッサー・リバーブ。
+// 左の帯の「エフェクター」: 選んでいる（歌の）トラックのイコライザー・コンプレッサー・リバーブ。
 // 値を変えると store.changed("mix") で再生中の音にすぐ効く（合成し直さない）。undo はつまみ・点を離したときに積む。
 // イコライザーは「声の地図」: 合成した声の平均のスペクトルを後ろに描き、帯域に名前を付け、点は足した分だけ置く。
 import { cssVar } from "./canvas";
@@ -91,7 +91,7 @@ export class FxPanel {
     const sec = this.section(title);
     const sw = document.createElement("button");
     sw.className = "switch" + (get() ? " on" : "");
-    sw.title = t("入り切り");
+    sw.title = t("オン/オフ");
     sw.addEventListener("click", () => {
       this.begin();
       set(!get());
@@ -166,8 +166,8 @@ export class FxPanel {
       ctx.clearRect(0, 0, W, H);
       ctx.fillStyle = cssVar("--pr-bg");
       ctx.fillRect(0, 0, W, H);
-      // 帯域の名前（縞と、上の段の文字）
-      ctx.font = "8.5px 'Hiragino Sans', sans-serif";
+      // 帯域の名前（縞と、上の段の文字。帯の幅に収まらない名前は描かない。名前はマウスの下の 1 行（zoneAt）にも出る）
+      ctx.font = "8px 'Hiragino Sans', sans-serif";
       ctx.textAlign = "center";
       ZONES.forEach(([a, b, name], i) => {
         const xa = fx(a);
@@ -176,9 +176,11 @@ export class FxPanel {
         ctx.globalAlpha = i % 2 ? 0.07 : 0.035;
         ctx.fillRect(xa, TOP, xb - xa, H - AXIS - TOP);
         ctx.globalAlpha = 1;
+        if (ctx.measureText(name).width > xb - xa - 2) return;
         ctx.fillStyle = cssVar("--muted");
         ctx.fillText(name, (xa + xb) / 2, 10);
       });
+      ctx.font = "8.5px 'Hiragino Sans', sans-serif";
       // 合成した声の平均のスペクトル（下から塗る。いちばん大きい所が上から 1 割の高さ）
       const sy = (db: number) => TOP + 6 + (Math.min(SPEC_DB, -db) / SPEC_DB) * (H - AXIS - TOP - 6);
       if (spec) {
@@ -193,7 +195,7 @@ export class FxPanel {
         ctx.globalAlpha = 1;
       } else {
         ctx.fillStyle = cssVar("--muted");
-        ctx.fillText(t("合成が済むと、声のスペクトルがここに出ます"), W / 2, MID + HALF * 0.55);
+        ctx.fillText(t("合成が完了すると、ここに声のスペクトルが表示されます"), W / 2, MID + HALF * 0.55);
       }
       // 周波数の目盛り（太線 100・1k・10k、細線 50・200・500・2k・5k・20k の手前まで）
       ctx.lineWidth = 1;
@@ -292,7 +294,7 @@ export class FxPanel {
       const b = this.sel > 0 ? eq.bands[this.sel - 1] : null;
       readout.textContent = b
         ? `${fmtHz(b.freq)} · ${fmtDb(b.gain)} · ${t("幅 {q}", { q: b.q.toFixed(2) })}`
-        : t("低域カット: {f}", { f: fmtHz(eq.lowCut) });
+        : t("ローカット: {f}", { f: fmtHz(eq.lowCut) });
     };
     let dragging = -1;
     const local = (e: MouseEvent) => {
@@ -362,7 +364,7 @@ export class FxPanel {
       const [x, y] = local(e);
       if (nearest(x, y) >= 0) return;
       if (eq.bands.length >= EQ_MAX_BANDS) {
-        readout.textContent = t("点は {n} 個までです", { n: EQ_MAX_BANDS });
+        readout.textContent = t("ポイントは {n} 個まで追加できます", { n: EQ_MAX_BANDS });
         return;
       }
       this.begin();
@@ -411,13 +413,13 @@ export class FxPanel {
       const b = i > 0 ? eq.bands[i - 1] : null;
       const lf = (v: number) => Math.log2(v);
       this.knobRow(knobs, [
-        { label: i === 0 ? t("低域カット") : t("周波数"), el: knob({
+        { label: i === 0 ? t("ローカット") : t("周波数"), el: knob({
           title: t("周波数"), min: lf(FMIN), max: lf(i === 0 ? 1000 : FMAX), def: lf(i === 0 ? 40 : 1000),
           get: () => lf(b ? b.freq : eq.lowCut),
           set: (v) => { if (b) b.freq = 2 ** v; else eq.lowCut = 2 ** v; draw(); this.changed(); },
           fmt: (v) => fmtHz(2 ** v), onStart: this.begin, onEnd: this.end }) },
-        { label: t("増減"), el: b ? knob({
-          title: t("増減"), min: -GMAX, max: GMAX, def: 0, get: () => b.gain,
+        { label: t("ゲイン"), el: b ? knob({
+          title: t("ゲイン"), min: -GMAX, max: GMAX, def: 0, get: () => b.gain,
           set: (v) => { b.gain = Math.round(v * 10) / 10; draw(); this.changed(); },
           fmt: fmtDb, onStart: this.begin, onEnd: this.end })
           : disabledKnob("—") },
@@ -430,12 +432,12 @@ export class FxPanel {
       if (b) {
         const del = document.createElement("button");
         del.className = "small eq-del";
-        del.textContent = t("この点を消す");
+        del.textContent = t("このポイントを削除");
         del.addEventListener("click", () => removeBand(i));
         knobs.appendChild(del);
       }
     };
-    sec.insertAdjacentHTML("beforeend", `<p class="hint">${t("何も無い所をダブルクリックで点を足す。点をドラッグで動かし、点の上でホイールで幅、右クリックか Delete で消す。⌐ は低域カット。")}</p>`);
+    sec.insertAdjacentHTML("beforeend", `<p class="hint">${t("空いている所をダブルクリックでポイントを追加。ドラッグで移動、ポイントの上でホイールを回すと幅（Q）を調整、右クリックまたは Delete で削除します。⌐ はローカットです。")}</p>`);
     requestAnimationFrame(draw);
     refreshKnobs();
   }
@@ -486,7 +488,7 @@ export class FxPanel {
       ctx.stroke();
       ctx.fillStyle = cssVar("--muted");
       ctx.font = "9px sans-serif";
-      ctx.fillText(t("しきい値 {db} dB", { db: c.threshold.toFixed(0) }), 6, 12);
+      ctx.fillText(t("スレッショルド {db} dB", { db: c.threshold.toFixed(0) }), 6, 12);
       ctx.setLineDash([3, 3]);
       ctx.strokeStyle = cssVar("--grid-bar");
       ctx.lineWidth = 1;
@@ -499,17 +501,16 @@ export class FxPanel {
     requestAnimationFrame(draw);
     const set = (fn: () => void) => { fn(); draw(); this.changed(); };
     this.knobRow(sec, [
-      { label: t("しきい値"), el: knob({ title: t("しきい値"), min: -60, max: 0, def: -18, get: () => c.threshold,
+      { label: t("スレッショルド"), el: knob({ title: t("スレッショルド"), min: -60, max: 0, def: -18, get: () => c.threshold,
         set: (v) => set(() => { c.threshold = Math.round(v * 10) / 10; }), fmt: (v) => `${v.toFixed(1)} dB`,
         onStart: this.begin, onEnd: this.end }) },
       { label: t("アタック"), el: knob({ title: t("アタック"), min: 0.001, max: 0.2, def: 0.01, get: () => c.attack,
         set: (v) => set(() => { c.attack = Math.round(v * 1000) / 1000; }), fmt: (v) => `${(v * 1000).toFixed(0)} ms`,
         onStart: this.begin, onEnd: this.end }) },
-      { label: t("比"), el: knob({ title: t("比"), min: 1, max: 20, def: 3, get: () => c.ratio,
+      { label: t("レシオ"), el: knob({ title: t("レシオ"), min: 1, max: 20, def: 3, get: () => c.ratio,
         set: (v) => set(() => { c.ratio = Math.round(v * 10) / 10; }), fmt: (v) => `${v.toFixed(1)} : 1`,
         onStart: this.begin, onEnd: this.end }) },
     ]);
-    sec.insertAdjacentHTML("beforeend", `<p class="hint">${t("下がった分は大まかに持ち上げます（音量が下がりすぎないように）。")}</p>`);
   }
 
   // ── リバーブ ──────────────────────────────
@@ -774,7 +775,7 @@ export class FxPanel {
       this.changed();
     });
     segButtons();
-    sec.insertAdjacentHTML("beforeend", `<p class="hint">${t("点をドラッグ: 始まり（プリディレイ）・量（ドライ/ウェット）・長さ（残響が消えるまで）。点をダブルクリックで種類の値に戻す。")}</p>`);
+    sec.insertAdjacentHTML("beforeend", `<p class="hint">${t("ポイントをドラッグして、プリディレイ・ミックス量・残響の長さを調整します。ダブルクリックで種類の値に戻ります。")}</p>`);
     requestAnimationFrame(draw);
   }
 }

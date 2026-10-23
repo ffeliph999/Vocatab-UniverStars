@@ -10,11 +10,11 @@ import { NotePopover } from "./notepop";
 import { restore } from "./projectfile";
 import { parseScoreFile } from "./score";
 import { ICONS } from "./icons";
-import { defaultFx, FPS, isAudioTrack, secPerTick, TPQ, type Track, trackRegion } from "./model";
+import { defaultFx, isAudioTrack, secPerTick, TPQ, type Track, trackRegion } from "./model";
 import { MelPanel } from "./melview";
 import { ParamPanel } from "./paramview";
 import { PianoRoll, type Tool } from "./pianoroll";
-import { assembleMel, assembleWav, Renderer } from "./render";
+import { Renderer } from "./render";
 import { sampleProject } from "./sample";
 import { SidePanel } from "./side";
 import { Store } from "./store";
@@ -38,13 +38,17 @@ const derived = (): Derived => {
   if (!cache || cache.version !== store.version || cache.track !== store.project.activeTrack ||
       cache.rev !== renderer.rev) {
     cache = { version: store.version, track: store.project.activeTrack, rev: renderer.rev,
-              d: derive(store.project, store.track, renderer.connected ? renderer.phrases(store.track) : undefined) };
+              d: derive(store.project, store.track, renderer.connected ? renderer.phrases(store.track) : undefined,
+                        renderer.breathContext(store.track)) };
   }
   return cache.d;
 };
+// ブレスの置き場所（再生・書き出しと、書き出す前の確認でトラックごとに要る）。選んでいるトラックは上の取り置きから
+renderer.slotsFor = (tr) => (tr.id === store.track.id ? derived().breaths
+  : derive(store.project, tr, renderer.connected ? renderer.phrases(tr) : undefined, renderer.breathContext(tr)).breaths);
 
 const status = $("status");
-const defaultHint = t("Space: 再生・一時停止　1: 選択　2: 鉛筆　3: ピッチのペン　Delete: 消す　⌘Z / ⇧⌘Z: 取り消し / やり直し　↑↓: 半音（⇧ でオクターブ）");
+const defaultHint = t("Space: 再生・一時停止　1: 選択　2: 鉛筆　3: ピッチのペン　Delete: 削除　⌘Z / ⇧⌘Z: 取り消し / やり直し　↑↓: 半音（⇧ でオクターブ）");
 const hint = (s: string): void => { status.textContent = s || defaultHint; };
 hint("");
 
@@ -68,7 +72,7 @@ phonWrap.style.height = "84px";
 const phonCanvas = document.createElement("canvas");
 phonWrap.appendChild(phonCanvas);
 bottom.add("phoneme", t("音素のタイミング"), phonWrap, true, { min: () => 34, max: 200 });
-const phon = new PhonemePanel(store, view, derived, phonCanvas, () => pr.snapTicks(), hint);
+const phon = new PhonemePanel(store, view, derived, phonCanvas, () => pr.snapTicks(), hint, () => renderer.breathContext(store.track));
 const mel = new MelPanel(store, view, derived, () => pr.snapTicks());
 bottom.add("mel", "mel", mel.el, true,
            { min: () => mel.minHeight(), max: 900, onResize: (h) => mel.onResize(h) });
@@ -149,15 +153,15 @@ function onEngineUpdate(): void {
     engineHooked = true;
     // 曲全体の mel の並べ直しは重いので、mel のパネルが版（rev）の変わったときだけ data() を呼ぶ
     mel.setEngine((kind) => ({
-      data: () => assembleMel(renderer.phrases(store.track), kind === "acoustic" ? "in" : kind === "vocoder" ? "plain" : "out"),
+      data: () => renderer.trackMel(store.track, kind === "acoustic" ? "in" : kind === "vocoder" ? "plain" : "out"),
       rev: renderer.rev,
     }));
     renderer.wantPlain = () => mel.isOn(1);
     renderer.wantOut = () => mel.isOn(2);
     mel.onToggle = () => renderer.schedule(50);
-    transport.engineWav = (t) => assembleWav(renderer.phrases(t));
-    // ピアノロールの下端の波形: 選んでいるトラックの、合成が済んだ句の波形（エフェクトの前）
-    pr.waveSource = () => renderer.phrases(store.track).flatMap((p) => (p.wav ? [{ start: p.startFrame / FPS, wav: p.wav }] : []));
+    transport.engineWav = (t) => renderer.trackWav(t);
+    // ピアノロールの下端の波形: 選んでいるトラックの、合成が済んだフレーズとブレスの波形（エフェクトの前）
+    pr.waveSource = () => renderer.trackParts(store.track, derived().breaths).map((p) => ({ start: p.start / 44100, wav: p.wav }));
   }
   document.querySelector(".brand .tag")!.textContent = renderer.connected ? t("実験版") : t("モック");
   if (!renderer.connected) {
@@ -169,8 +173,8 @@ function onEngineUpdate(): void {
     const loading = pg ? t("モデルを読み込み中 {p}%（{mb} / {total} MB）", {
       p: Math.floor((100 * pg.loaded) / Math.max(1, pg.total)), mb: (pg.loaded / 1e6).toFixed(0), total: (pg.total / 1e6).toFixed(0) }) : "";
     // 待機中: しばらく操作が無くエンジンが計算の部分を手放している（次の編集で起きる）
-    const idle = done < all.length ? t("描画中 {done}/{all} 句", { done, all: all.length })
-      : renderer.engine.sleeping ? t("描画済み（待機中）") : t("描画済み");
+    const idle = done < all.length ? t("レンダリング中 {done}/{all} フレーズ", { done, all: all.length })
+      : renderer.engine.sleeping ? t("レンダリング完了（待機中）") : t("レンダリング完了");
     engineState.textContent = renderer.error || loading || `${renderer.voicebank.name}　${idle}`;
     engineState.classList.toggle("error", !!renderer.error);
   }
@@ -445,7 +449,7 @@ files.onOpen = (t) => {
   revealNotes(t);
 };
 // 確認用（URL に引数があるときだけ）: 外から楽譜の読み込みなどを呼べるようにする
-if (testing) (window as unknown as { __svs: unknown }).__svs = { files, store, view, transport, parseScoreFile, missingKeys };
+if (testing) (window as unknown as { __svs: unknown }).__svs = { files, store, view, transport, parseScoreFile, missingKeys, derived, renderer };
 if (!testing) {
   void restore().then((r) => {
     if (!r) return;
@@ -571,7 +575,7 @@ if (q.get("demo") === "export") {
       return;
     }
     // ※ ヘッドレスの Chrome の仮想時間（--virtual-time-budget）の下では OfflineAudioContext が進まないので、実時間で確かめる
-    void buildExports(store.project, (t) => assembleWav(renderer.phrases(t)), store.exportOpts).then(async (files) => {
+    void buildExports(store.project, (t) => renderer.trackWav(t), store.exportOpts).then(async (files) => {
       const info = await Promise.all(files.map(async (f) => {
         const v = new DataView(await f.blob.arrayBuffer());
         const ch = v.getUint16(22, true);

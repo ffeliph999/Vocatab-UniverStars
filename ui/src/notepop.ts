@@ -204,12 +204,12 @@ export class NotePopover {
       const hasPrev = notes.some((n) => n.attrs[prevKey]?.length);
       const takes = Math.max(...notes.map((n) => (n.attrs[prevKey]?.length ?? 0) + (n.attrs[key] ? 1 : 0)));
       const state = taken === 0 ? t("最初のテイク") : notes.length === 1 ? t("{n} 回目", { n: takes })
-        : t("{n} 個を取り直し済み", { n: taken });
+        : t("{n} 個をリテイクしました", { n: taken });
       const row = document.createElement("div");
       row.className = "retake-row";
       row.title = tip;
       row.innerHTML = `<div class="retake-head"><span>${label}</span><span class="muted">${state}</span></div>
-        <button class="small primary" title="${t("この音符の所だけ AI の乱数を引き直す")}">${t("取り直す")}</button>
+        <button class="small primary" title="${t("この音符だけ AI の生成をやり直す")}">${t("リテイク")}</button>
         <button class="small" title="${t("一つ前のテイクに戻す")}" ${hasPrev ? "" : "disabled"}>${t("一つ前")}</button>
         <button class="small" title="${t("最初のテイク（初期の乱数）に戻す")}" ${taken ? "" : "disabled"}>${t("最初")}</button>`;
       const [again, prev, first] = row.querySelectorAll("button");

@@ -1,19 +1,29 @@
 // 画面側のエンジンの窓口。2 通り:
 //   WebEngine    ブラウザの中（Web Worker の engine-worker.js）で動かす。GitHub Pages などの静的な配信ではこちら
-//   ServerEngine 手元の Python のエンジン（engine/server.py）に問い合わせる。URL に ?engine=server を付けたとき（照らし合わせ用）
+//   ServerEngine 手元の Python のエンジン（engine/server.py）に問い合わせる。そのサーバーが配ったページ（window.SVS_ENGINE）か、
+//                URL に ?engine=server を付けたとき
 import { b64, type EngineInfo, unb64 } from "../engine";
 import { getGpu } from "../theme";
-import type { AnalyzeReq, AnalyzeResp, RestoreEntry, SynthReq, SynthResp, WorkerCall, WorkerReply } from "./protocol";
+import type { AnalyzeReq, AnalyzeResp, BreathIndexResp, BreathReq, BreathResp, RestoreEntry, SynthReq, SynthResp, WorkerCall,
+              WorkerReply } from "./protocol";
 import type { WebIndex } from "./types";
 
 /** これだけの秒数、エンジンへの呼び出しが無ければ Worker ごと手放す（?idle=<秒> で変えられる。0 なら手放さない） */
 const IDLE_SEC = 180;
+
+/** ビルドの印（tools/build.py の --define）。Worker のファイル名に付けて、作り直したエンジンを古いキャッシュで使い回させない */
+declare const __BUILD__: string | undefined;
+const BUILD = typeof __BUILD__ === "string" ? __BUILD__ : "dev";
 
 export interface EngineClient {
   /** ボイスバンクとボコーダの一覧。使えなければ null */
   info(): Promise<EngineInfo | null>;
   analyze(r: AnalyzeReq): Promise<AnalyzeResp>;
   synthesize(r: SynthReq): Promise<SynthResp>;
+  /** ボイスバンクのブレスのパターンの一覧（無ければ空） */
+  breaths(voicebank: string): Promise<BreathIndexResp>;
+  /** ブレス 1 つの波形 */
+  breath(r: BreathReq): Promise<BreathResp>;
   /** モデルの読み込みの進み具合（読み終わったら null） */
   progress: { loaded: number; total: number } | null;
   onProgress: () => void;
@@ -46,7 +56,7 @@ export class WebEngine implements EngineClient {
   }
 
   private spawn(): void {
-    const w = new Worker(new URL("./engine-worker.js", import.meta.url));
+    const w = new Worker(new URL(`./engine-worker.js?v=${BUILD}`, import.meta.url));
     w.onmessage = (e: MessageEvent<WorkerReply>) => {
       const m = e.data;
       if (m.type === "progress") {
@@ -166,6 +176,14 @@ export class WebEngine implements EngineClient {
   synthesize(r: SynthReq): Promise<SynthResp> {
     return this.call<SynthResp>({ type: "synthesize", req: r });
   }
+
+  breaths(voicebank: string): Promise<BreathIndexResp> {
+    return this.call<BreathIndexResp>({ type: "breaths", voicebank });
+  }
+
+  breath(r: BreathReq): Promise<BreathResp> {
+    return this.call<BreathResp>({ type: "breath", req: r });
+  }
 }
 
 export class ServerEngine implements EngineClient {
@@ -205,9 +223,30 @@ export class ServerEngine implements EngineClient {
     return { n_frames: j.n_frames, wav: unb64(j.wav), mel_in: unb64(j.mel_in),
              mel_out: j.mel_out ? unb64(j.mel_out) : undefined, mel_plain: j.mel_plain ? unb64(j.mel_plain) : undefined };
   }
+
+  async breaths(voicebank: string): Promise<BreathIndexResp> {
+    const r = await fetch(`/api/breaths?voicebank=${encodeURIComponent(voicebank)}`);
+    if (!r.ok) throw new Error(await r.text());
+    return (await r.json()) as BreathIndexResp;
+  }
+
+  async breath(r: BreathReq): Promise<BreathResp> {
+    const j = await this.post("/api/breath", r);
+    return { frames: j.frames, wav: unb64(j.wav) };
+  }
 }
 
-/** URL に ?engine=server があれば Python のエンジン、無ければブラウザの中のエンジン */
+declare global {
+  interface Window {
+    SVS_ENGINE?: string;
+  }
+}
+
+/**
+ * エンジンの選び方: URL の ?engine=server|web が最優先。無ければ、ページを配った側が置いた印
+ * （engine/server.py は index.html に window.SVS_ENGINE = "server" を差し込む）。どちらも無ければブラウザの中のエンジン
+ */
 export function makeEngine(): EngineClient {
-  return new URLSearchParams(location.search).get("engine") === "server" ? new ServerEngine() : new WebEngine();
+  const pick = new URLSearchParams(location.search).get("engine") ?? window.SVS_ENGINE;
+  return pick === "server" ? new ServerEngine() : new WebEngine();
 }

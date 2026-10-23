@@ -50,6 +50,11 @@ function loadOrt(useGpu: boolean): boolean {
     } else if (m.type === "restore") {
       // 待機から起こされた直後: 画面が持っている解析の結果を取り置きへ戻す（client.ts の wake）
       post({ type: "result", id: m.id, result: { restored: engine.restore(m.entries) } });
+    } else if (m.type === "breaths") {
+      post({ type: "result", id: m.id, result: await engine.breaths(m.voicebank) });
+    } else if (m.type === "breath") {
+      const res = await engine.breath(m.req);
+      post({ type: "result", id: m.id, result: res }, [res.wav.buffer]);
     }
   } catch (err) {
     post({ type: "error", id: m.id, error: err instanceof Error ? err.message : String(err) });

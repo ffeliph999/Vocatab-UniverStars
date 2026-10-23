@@ -1,50 +1,70 @@
-// 自動の描画: 編集のたびに（少し待ってから）句ごとに解析し、最後の F0 が変わった句だけを合成し直す。
-// エンジンは engine-web/client.ts の窓口（既定はブラウザの中、?engine=server で手元の Python）。
+// 自動のレンダリング: 編集のたびに（少し待ってから）フレーズごとに解析し、最後の F0 が変わったフレーズだけを合成し直す。
+// ブレス（音符の前に入れた息継ぎ）はエンジンから波形をもらい、画面側で「音量」の曲線を掛けてフレーズの波形に混ぜる。
+// エンジンは engine-web/client.ts の窓口（既定はブラウザの中。Python のサーバーが配ったページや ?engine=server では手元の Python）。
+import { type BreathClipInfo, type BreathSlot, breathPart } from "./breath";
+import type { BreathContext } from "./derive";
 import { composeF0, type EngineInfo, type EPhrase, hashF32, phraseParams } from "./engine";
 import { type EngineClient, makeEngine } from "./engine-web/client";
+import { wavToMel } from "./engine-web/melspec";
 import type { RestoreEntry } from "./engine-web/protocol";
 import { t as tx } from "./i18n";
-import { activeNotes, type Track } from "./model";
+import { activeNotes, FPS, type Track } from "./model";
 import type { Store } from "./store";
 
 const N_MELS = 128;
 const MEL_FLOOR = -11.5;
 
-/** 句ごとの mel を曲の時間軸に並べる（bin ごと [128 × N]）。句の端の pau が重なる所は大きい方。 */
-export function assembleMel(phrases: EPhrase[], kind: "in" | "out" | "plain"): Float32Array | null {
-  const pick = (p: EPhrase) => (kind === "in" ? p.melIn : kind === "plain" ? p.melPlain : p.melOut);
-  const ready = phrases.filter(pick);
-  if (!ready.length) return null;
-  let n = 0;
-  for (const p of phrases) n = Math.max(n, p.startFrame + p.nFrames);
+export type MelKind = "in" | "out" | "plain";
+
+/** 曲の時間軸に並べる mel の 1 片（フレーズか、ブレス）。startFrame は絶対のフレーム、mel は bin ごと [128 × frames] */
+export interface MelPiece {
+  startFrame: number;
+  frames: number;
+  mel: Float32Array;
+}
+
+/**
+ * mel の片を曲の時間軸に並べる（bin ごと [128 × N]）。重なる所（句の端の pau・ブレス）は、音は波形で足しているので
+ * mel もパワーの和にする: ln-mel は振幅の対数なので 0.5·ln(e^{2a} + e^{2b})（床の所はそのまま置く）
+ */
+export function assembleMel(pieces: MelPiece[], endFrame: number): Float32Array | null {
+  if (!pieces.length) return null;
+  let n = endFrame;
+  for (const p of pieces) n = Math.max(n, p.startFrame + p.frames);
   n += 172;
   const out = new Float32Array(N_MELS * n).fill(MEL_FLOOR);
-  for (const p of ready) {
-    const m = pick(p)!;
+  for (const p of pieces) {
     for (let b = 0; b < N_MELS; b++) {
-      for (let i = 0; i < p.nFrames; i++) {
+      for (let i = 0; i < p.frames; i++) {
         const g = p.startFrame + i;
         if (g < 0 || g >= n) continue;
         const k = b * n + g;
-        out[k] = Math.max(out[k], m[b * p.nFrames + i]);
+        const v = p.mel[b * p.frames + i];
+        const cur = out[k];
+        if (cur <= MEL_FLOOR) out[k] = Math.max(cur, v);
+        else if (v > MEL_FLOOR) out[k] = 0.5 * Math.log(Math.exp(2 * cur) + Math.exp(2 * v));
       }
     }
   }
   return out;
 }
 
-/** 句ごとの波形を曲の時間軸に並べる（44.1 kHz、hop 256）。合成済みの句が無ければ null。 */
-export function assembleWav(phrases: EPhrase[]): Float32Array | null {
-  const ready = phrases.filter((p) => p.wav);
-  if (!ready.length) return null;
+/** 句の mel を片に（無い句は飛ばす） */
+export function phraseMelPieces(phrases: EPhrase[], kind: MelKind): MelPiece[] {
+  const pick = (p: EPhrase) => (kind === "in" ? p.melIn : kind === "plain" ? p.melPlain : p.melOut);
+  return phrases.flatMap((p) => (pick(p) ? [{ startFrame: p.startFrame, frames: p.nFrames, mel: pick(p)! }] : []));
+}
+
+/** 波形の部品（フレーズとブレス。start は絶対のサンプル位置）を曲の時間軸に並べる（44.1 kHz）。部品が無ければ null。 */
+export function assembleParts(parts: Array<{ start: number; wav: Float32Array }>): Float32Array | null {
+  if (!parts.length) return null;
   let n = 0;
-  for (const p of ready) n = Math.max(n, (p.startFrame + p.nFrames) * 256);
+  for (const p of parts) n = Math.max(n, p.start + p.wav.length);
   const out = new Float32Array(Math.max(1, n));
-  for (const p of ready) {
-    const w = p.wav!;
-    const o = p.startFrame * 256;
+  for (const p of parts) {
+    const w = p.wav;
     for (let i = 0; i < w.length; i++) {
-      const g = o + i;
+      const g = p.start + i;
       if (g >= 0 && g < n) out[g] += w[i];
     }
   }
@@ -74,9 +94,15 @@ export class Renderer {
   wantPlain: () => boolean = () => false;
   /** mel の ③ の行がオンか（オンのときだけ、出た音の mel を頼む。1 句で 35 ms ほど） */
   wantOut: () => boolean = () => false;
+  /** トラックのブレスの置き場所（derive の結果。main.ts が入れる。無ければブレスは混ぜない） */
+  slotsFor: (track: Track) => BreathSlot[] = () => [];
   readonly engine: EngineClient = makeEngine();
   private busy = false;
   private timer = 0;
+  private breathIndex = new Map<string, BreathClipInfo[]>(); // ボイスバンク → ブレスの束の一覧（届いたもの）
+  private breathIndexPending = new Set<string>();
+  /** "ボイスバンク|ボコーダ|番号" → ブレスの波形（取りに行っている間は null） */
+  private breathWavs = new Map<string, { wav: Float32Array } | null>();
 
   constructor(private store: Store, private onUpdate: () => void) {
     this.engine.onProgress = () => this.onUpdate(); // モデルの読み込みの進み具合
@@ -99,7 +125,10 @@ export class Renderer {
   async init(): Promise<void> {
     this.info = await this.engine.info();
     this.onUpdate();
-    if (this.info) this.schedule(0);
+    if (this.info) {
+      this.schedule(0);
+      for (const tr of this.store.project.tracks) this.breathContext(tr); // ブレスの束を先に取りに行く（小さい）
+    }
   }
 
   get connected(): boolean {
@@ -144,8 +173,104 @@ export class Renderer {
 
   private countPending(): number {
     let n = 0;
-    for (const t of this.store.project.tracks) for (const ph of this.phrases(t)) if (ph.status !== "済み") n++;
+    for (const t of this.store.project.tracks) {
+      for (const ph of this.phrases(t)) if (ph.status !== "済み") n++;
+      for (const s of this.slotsFor(t)) if (s.index !== null && !this.breathWav(t, s.index)) n++; // 無ければ取りに行く
+    }
     return n;
+  }
+
+  // ── ブレス ──
+
+  /** トラックのブレスの文脈（derive に渡す）。束をまだ読んでいなければ取りに行き、届いたら知らせる。無ければ undefined */
+  breathContext(track: Track): BreathContext | undefined {
+    if (!this.connected) return undefined;
+    const vb = this.voicebankOf(track).key;
+    const clips = this.breathIndex.get(vb);
+    if (!clips) {
+      if (!this.breathIndexPending.has(vb)) {
+        this.breathIndexPending.add(vb);
+        this.engine.breaths(vb).then((r) => {
+          this.breathIndex.set(vb, r.clips);
+          this.rev++;
+          this.onUpdate();
+        }).catch((e) => {
+          console.warn(e);
+          this.breathIndex.set(vb, []); // 読めなければブレス無しとして進む
+        }).finally(() => this.breathIndexPending.delete(vb));
+      }
+      return undefined;
+    }
+    return clips.length ? { clips, singer: this.singerId(track) } : undefined;
+  }
+
+  /** ブレスの束の様子（表示用）: 取りに行っている途中 / 無い / 有る */
+  breathState(track: Track): "loading" | "none" | "ready" {
+    if (!this.connected) return "none";
+    const clips = this.breathIndex.get(this.voicebankOf(track).key);
+    if (!clips) return "loading";
+    return clips.some((c) => c.singer === this.singerId(track)) ? "ready" : "none";
+  }
+
+  /** ブレスの波形（ボイスバンク・ボコーダ・番号ごとに取り置く）。無ければエンジンに頼んで null を返し、届いたら知らせる */
+  breathWav(track: Track, index: number): { wav: Float32Array } | null {
+    const vb = this.voicebankOf(track).key;
+    const voc = this.vocoderKey();
+    const key = `${vb}|${voc}|${index}`;
+    const hit = this.breathWavs.get(key);
+    if (hit !== undefined) return hit;
+    this.breathWavs.set(key, null);
+    this.engine.breath({ voicebank: vb, index, vocoder: voc }).then((r) => {
+      scrubWav(r.wav);
+      this.breathWavs.set(key, { wav: r.wav });
+      this.rev++;
+      this.onUpdate();
+    }).catch((e) => {
+      this.breathWavs.delete(key);
+      this.error = tx("ブレスの合成に失敗: {e}", { e: e instanceof Error ? e.message : String(e) });
+      this.onUpdate();
+    });
+    return null;
+  }
+
+  /** トラックの波形の部品（合成済みのフレーズと、届いているブレス）。start は絶対のサンプル位置 */
+  trackParts(track: Track, slots: BreathSlot[] = this.slotsFor(track)): Array<{ start: number; wav: Float32Array }> {
+    const parts = this.phrases(track).flatMap((p) => (p.wav ? [{ start: p.startFrame * 256, wav: p.wav }] : []));
+    for (const s of slots) {
+      if (s.index === null) continue;
+      const b = this.breathWav(track, s.index);
+      if (b) parts.push(breathPart(s, b.wav, track, this.store.project));
+    }
+    return parts;
+  }
+
+  /** トラックのエフェクト前の波形（再生・書き出し用）。合成済みのものが無ければ null */
+  trackWav(track: Track): Float32Array | null {
+    return assembleParts(this.trackParts(track));
+  }
+
+  /**
+   * トラックの mel（画面の mel のパネル用）。ブレスはフレーズのボコーダを通らない（別に鳴らして波形で足す）ので、
+   * ①（ボコーダの入力）と ②（ボコーダの出力）には出さず、③（声の調整後 = 実際に鳴る音）にだけ、
+   * 音量の曲線を掛けた後のブレスの音から計算した mel を重ねる
+   */
+  trackMel(track: Track, kind: MelKind): Float32Array | null {
+    const phrases = this.phrases(track);
+    const pieces = phraseMelPieces(phrases, kind);
+    if (!pieces.length) return null; // 句の mel が 1 つも無ければ、ブレスだけでは出さない
+    let end = 0;
+    for (const p of phrases) end = Math.max(end, p.startFrame + p.nFrames);
+    if (kind === "out") {
+      for (const s of this.slotsFor(track)) {
+        if (s.index === null) continue;
+        const b = this.breathWav(track, s.index);
+        if (!b) continue;
+        const part = breathPart(s, b.wav, track, this.store.project);
+        const { mel, frames } = wavToMel(part.wav);
+        pieces.push({ startFrame: Math.round((s.start + s.cut) * FPS), frames, mel });
+      }
+    }
+    return assembleMel(pieces, end);
   }
 
   schedule(delay = 200): void {
@@ -240,7 +365,7 @@ export class Renderer {
           if (bad) {
             const sec = (ph.startFrame / (44100 / 256)).toFixed(1);
             console.warn(`句（${sec} 秒〜、鍵 ${ph.key}）の波形に有限でない値が ${bad} 個`);
-            this.error = tx("{sec} 秒からの句の波形に数でない値が {n} 個ありました（0 にして鳴らします）", { sec, n: bad });
+            this.error = tx("{sec} 秒からのフレーズに不正な値が {n} 個ありました（無音に置き換えて再生します）", { sec, n: bad });
           }
           ph.melIn = j.mel_in;
           ph.melOut = j.mel_out;

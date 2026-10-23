@@ -19,7 +19,7 @@ export interface FxChain {
  */
 export const REVERB_PRESETS: Record<ReverbPreset, { label: string; decay: number; preDelay: number; wet: number;
                                                     damp: number; build: number; early: Array<[number, number]> }> = {
-  room: { label: t("部屋"), decay: 0.6, preDelay: 5, wet: 0.25, damp: 6000, build: 0.004,
+  room: { label: t("ルーム"), decay: 0.6, preDelay: 5, wet: 0.25, damp: 6000, build: 0.004,
           early: [[3, 0.6], [5, 0.5], [8, 0.45], [11, 0.4], [14, 0.35], [18, 0.3], [23, 0.25], [27, 0.2], [33, 0.15]] },
   hall: { label: t("ホール"), decay: 2.4, preDelay: 25, wet: 0.22, damp: 3200, build: 0.04,
           early: [[17, 0.35], [29, 0.3], [43, 0.25], [61, 0.2], [79, 0.15]] },

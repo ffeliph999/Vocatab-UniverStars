@@ -28,10 +28,10 @@ python -m http.server 8097          # このフォルダを配る（どの静的
 |---|---|
 | `ui/src/` | 画面（TypeScript、フレームワーク無し） |
 | `ui/src/engine-web/` | ブラウザ版のエンジン。`core.ts` が解析と合成の順番、`worker.ts` が Web Worker、`client.ts` が画面側の窓口 |
-| `ui/src/engine-web/score.ts`・`durations.ts` | 楽譜 → 句 → 音素の長さ |
+| `ui/src/engine-web/score.ts`・`durations.ts` | 楽譜 → フレーズ → 音素の長さ |
 | `ui/src/engine-web/g2p_ko.ts` | 韓国語の G2P（ハングル → 音素。言語パックが `g2p: ko` のとき score.ts が使う） |
 | `ui/src/engine-web/f0host.ts` | F0 のモデルの入力と、出力からの抑揚の線（ピッチ補正を含む） |
-| `ui/src/engine-web/synthhost.ts`・`voiceparams.ts`・`melspec.ts` | 音響モデルとボコーダの入力、mel の後処理、ボイスパラメータの信号処理、出た音の mel |
+| `ui/src/engine-web/synthhost.ts`・`voiceparams.ts`・`melspec.ts` | 音響モデルとボコーダの入力、mel の後処理、声の調整の信号処理、出た音の mel |
 | `engine/` | 手元の Python のエンジン（移植のもと。照らし合わせに使う） |
 | `voicebanks/`・`vocoders/` | モデル（ONNX）と設定。`web.json`・`web_index.json` は `tools/export_web_assets.py` が書く |
 
@@ -49,7 +49,7 @@ node <作業用>/t.mjs
 ```
 
 `durations`・`f0`・`synth` の 3 本。前後の処理は Python とビット単位（float32 の丸めまで）で一致する。
-試験の楽譜は日本語の 3 つ（sakura・mixed・params）と韓国語の 1 つ（korean。ハングルの G2P と句末の終声）。
+試験の楽譜は日本語の 3 つ（sakura・mixed・params）と韓国語の 1 つ（korean。ハングルの G2P とフレーズ末の終声）。
 `python tools/golden/dump_golden.py korean` のようにケースの名前を渡すと、それだけ書き出す。
 
 韓国語の G2P（`ui/src/engine-web/g2p_ko.ts`）は、`python tools/golden/dump_g2p_ko.py` で PrettyPitch の `svs/g2p_ko.py` の
@@ -69,12 +69,12 @@ ln の単位。波形で平均 5e-5）。`python tools/run_e2e.py --model-only s
 
 MacBook Air（M 系、16 GB、CPU のみ・1 スレッド）での計測（`research/experiment/web_ort_bench`）。パソコンのブラウザを想定している。
 
-- 1 句（7.8 秒）のリテイク: Chrome で約 3.3 秒、Safari で約 3.5〜4 秒（F0 0.6 秒 + 音響 1.1 秒 + NHVSing 1.2 秒）。
-  NSF-HiFiGAN は CPU だと 1 句 13 秒かかるので、GPU 無しでは NHVSing 向き
-- メモリ: 描画後のページは物理フットプリント約 470 MB（Chrome）・約 490 MB（Safari）。取り置きはバイト数で区切る
-  （音響 32 MB・ボコーダ 128 MB、同じ句の変種は 3 つまで）ので、リテイクを 20 回続けても WASM のメモリは 203 MB で一定。
+- 1 フレーズ（7.8 秒）のリテイク: Chrome で約 3.3 秒、Safari で約 3.5〜4 秒（F0 0.6 秒 + 音響 1.1 秒 + NHVSing 1.2 秒）。
+  NSF-HiFiGAN は CPU だと 1 フレーズ 13 秒かかるので、GPU 無しでは NHVSing 向き
+- メモリ: レンダリング後のページは物理フットプリント約 470 MB（Chrome）・約 490 MB（Safari）。取り置きはバイト数で区切る
+  （音響 32 MB・ボコーダ 128 MB、同じフレーズの変種は 3 つまで）ので、リテイクを 20 回続けても WASM のメモリは 203 MB で一定。
   待機に入ると Worker ごと手放して約 160 MB（Chrome）・約 80 MB（Safari）になり、次の編集で約 4 秒で起きる
-  （変わっていない句は解析も合成もし直さない）
-- 長い句: 音響モデルの倍音の足し合わせを ONNX の `Loop` に畳んである（`tools/acoustic_loop.py`。出力はビット単位で同じ）ので、
-  音響モデルのピークメモリは 7.8 秒の句で +80 MB、30 秒の句で +290 MB（展開したままだと +385 MB・+1.5 GB。手元の
-  onnxruntime での実測）。ボコーダは句を区切らずそのまま通す
+  （変わっていないフレーズは解析も合成もし直さない）
+- 長いフレーズ: 音響モデルの倍音の足し合わせを ONNX の `Loop` に畳んである（`tools/acoustic_loop.py`。出力はビット単位で同じ）ので、
+  音響モデルのピークメモリは 7.8 秒のフレーズで +80 MB、30 秒のフレーズで +290 MB（展開したままだと +385 MB・+1.5 GB。手元の
+  onnxruntime での実測）。ボコーダはフレーズを区切らずそのまま通す
