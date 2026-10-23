@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>VocaTab social preview</title>
+<!-- GitHub の Social preview（1280x640）の下絵。make_social_preview.py が editor_shot.png を隣に置いてから撮る -->
+<style>
+* { margin: 0; box-sizing: border-box; }
+html, body { width: 1280px; height: 640px; overflow: hidden; background: #0b0d16; color: #fff;
+  font-family: "Helvetica Neue", -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+:root { --acc: #909dff; }
+.stage { position: relative; width: 1280px; height: 640px; overflow: hidden;
+  background: radial-gradient(ellipse 50% 60% at 82% 10%, rgba(120, 110, 255, .28), transparent 70%), #0b0d16; }
+
+/* ブラウザの窓のまね（右下にはみ出す） */
+.win { position: absolute; left: 575px; top: 84px; width: 900px; background: #0f1120; border-radius: 14px; overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .6), 0 0 0 1px rgba(255, 255, 255, .09); }
+.strip { height: 46px; background: #1a1c2a; display: flex; align-items: flex-end; padding: 0 16px; gap: 12px; }
+.dots { display: flex; gap: 8px; margin-bottom: 15px; margin-right: 6px; }
+.dots i { width: 12px; height: 12px; border-radius: 50%; }
+.dots i:nth-child(1) { background: #ff5f57; } .dots i:nth-child(2) { background: #febc2e; } .dots i:nth-child(3) { background: #28c840; }
+.tab { display: flex; align-items: center; gap: 9px; height: 36px; padding: 0 18px; background: #0f1120;
+  border-radius: 10px 10px 0 0; font-size: 14px; font-weight: 600; color: #e8e9f2; letter-spacing: .01em; }
+.fav { width: 12px; height: 12px; border-radius: 50%; background: var(--acc); box-shadow: 0 0 0 3px rgba(143, 149, 255, .25); }
+.plus { color: #8a8fa8; font-size: 20px; margin-bottom: 8px; margin-left: 2px; }
+.urlbar { height: 42px; background: #0f1120; display: flex; align-items: center; padding: 0 14px; gap: 10px; }
+.nav { color: #6e738c; font-size: 16px; letter-spacing: 4px; }
+.url { flex: 1; height: 28px; border-radius: 14px; background: #1b1e30; color: #b3b8cf; font-size: 13px;
+  display: flex; align-items: center; padding: 0 14px; gap: 8px; }
+.lock { width: 9px; height: 11px; border: 1.5px solid #9aa0bb; border-radius: 2px; position: relative; }
+.lock::before { content: ""; position: absolute; left: 1px; top: -6px; width: 5px; height: 6px; border: 1.5px solid #9aa0bb; border-bottom: 0; border-radius: 4px 4px 0 0; }
+.shot { display: block; width: 100%; }
+
+/* 文字: 「Tab」はブラウザのタブの形（上の両角が丸い札）に入れる */
+.text { position: absolute; left: 64px; top: 0; height: 640px; display: flex; flex-direction: column; justify-content: center; }
+.mark { display: flex; align-items: flex-end; gap: .05em; font-size: 100px; font-weight: 700; letter-spacing: -.035em; line-height: 1; }
+.mark b { font-weight: 700; color: var(--acc); padding: .1em .18em 0; border-radius: .2em .2em 0 0;
+  background: #181b2c; border: 2px solid rgba(144, 157, 255, .42); border-bottom: 0; }
+.tag { font-size: 25px; font-weight: 500; line-height: 1.4; margin-top: 30px; }
+.sub { font-size: 16px; color: #a9aec9; margin-top: 14px; letter-spacing: .01em; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="win">
+    <div class="strip"><div class="dots"><i></i><i></i><i></i></div>
+      <div class="tab"><span class="fav"></span>VocaTab</div><div class="plus">+</div></div>
+    <div class="urlbar"><span class="nav">‹ ›</span><div class="url"><span class="lock"></span>wavtechyukky.github.io/vocatab</div></div>
+    <img class="shot" src="editor_shot.png">
+  </div>
+  <div class="text">
+    <div class="mark"><span>Voca</span><b>Tab</b></div>
+    <div class="tag">Full-featured singing voice synthesis,<br>running in your browser.</div>
+    <div class="sub">Open source · No install · Nothing leaves your machine</div>
+  </div>
+</div>
+</body>
+</html>
