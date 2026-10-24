@@ -575,7 +575,8 @@ if (q.get("demo") === "export") {
       return;
     }
     // ※ ヘッドレスの Chrome の仮想時間（--virtual-time-budget）の下では OfflineAudioContext が進まないので、実時間で確かめる
-    void buildExports(store.project, (t) => renderer.trackWav(t), store.exportOpts).then(async (files) => {
+    const all = (["mix", "tracks"] as const).map((w) => buildExports(store.project, (t) => renderer.trackWav(t), store.exportOpts, w));
+    void Promise.all(all).then((r) => r.flat()).then(async (files) => {
       const info = await Promise.all(files.map(async (f) => {
         const v = new DataView(await f.blob.arrayBuffer());
         const ch = v.getUint16(22, true);

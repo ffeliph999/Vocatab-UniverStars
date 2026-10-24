@@ -24,7 +24,7 @@ export const REVERB_PRESETS: Record<ReverbPreset, { label: string; decay: number
   hall: { label: t("ホール"), decay: 2.4, preDelay: 25, wet: 0.22, damp: 3200, build: 0.04,
           early: [[17, 0.35], [29, 0.3], [43, 0.25], [61, 0.2], [79, 0.15]] },
   plate: { label: t("プレート"), decay: 1.5, preDelay: 0, wet: 0.2, damp: 11000, build: 0.001, early: [] },
-  cathedral: { label: t("大聖堂"), decay: 4.5, preDelay: 40, wet: 0.25, damp: 2200, build: 0.1,
+  cathedral: { label: t("アリーナ"), decay: 4.5, preDelay: 40, wet: 0.25, damp: 2200, build: 0.1,
                early: [[31, 0.25], [57, 0.2], [89, 0.18], [121, 0.14]] },
 };
 

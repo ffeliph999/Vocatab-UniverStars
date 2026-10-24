@@ -33,7 +33,6 @@
 - 自動保存（ブラウザの中）、プロジェクトの保存（.svsproj / 音声も含めた .zip）
 
 ![ピッチと抑揚](docs/gif/02_pitch.gif) ![リテイク](docs/gif/03_retake.gif)
-![ブレスとエフェクター](docs/gif/04_breath_fx.gif) ![書き出し](docs/gif/05_export.gif)
 
 ## 速さとメモリ
 
@@ -83,7 +82,7 @@ MacBook Air（M 系、16 GB）での実測。
 
 ### 書き出しと保存
 
-- 右上の「書き出し」で WAV（トラック別か、全部をまとめたミックス）を書き出します。レンダリングが済むまで待ちます。
+- 右上の「書き出し」を開き、「ミックスを書き出す」で全トラックをまとめた WAV を書き出します。トラックごとの WAV が欲しいときは「トラックを別々に書き出す」を開いてトラックを選びます。音は再生と同じ（ミュート・ソロ、トラックの音量とパン、エフェクターを反映）。レンダリングが済むまで待ちます。
 - 「ファイル」→「保存」で `.svsproj`（楽譜と設定。伴奏の音声は含まない）、「音声も含めて書き出す」で伴奏も入れた `.zip` を作ります。編集はブラウザの中にも自動で保存されます。
 
 ### キー操作
@@ -145,7 +144,7 @@ PrettyPitch を別の場所に置いたときは、環境変数 `PRETTYPITCH_ROO
 [voicebanks/leapsinger_ja_3singer/README.md](voicebanks/leapsinger_ja_3singer/README.md) を見てください。
 
 自分のモデルを足すには `voicebanks/<名前>/voicebank.yaml` を書き（モデルのファイル・歌い手・言語・既定のボコーダ）、
-`python tools/export_web_assets.py` で `web.json` と `web_index.json` を作り直します。`publish: false` を書くとブラウザ版の一覧には載せず、Python 版だけで使えます。言語は `dict/<lang>.yaml` の言語パック（PrettyPitch）で足せます（韓国語の G2P は `ui/src/engine-web/g2p_ko.ts` にあります）。
+`python tools/export_web_assets.py` で `web.json` と `web_index.json` を作り直します。`publish: false` を書くとブラウザ版の一覧には載せず、Python 版だけで使えます（ボコーダの `vocoder.yaml` も同じ）。言語は `dict/<lang>.yaml` の言語パック（PrettyPitch）で足せます（韓国語の G2P は `ui/src/engine-web/g2p_ko.ts` にあります）。
 
 ## 開発
 

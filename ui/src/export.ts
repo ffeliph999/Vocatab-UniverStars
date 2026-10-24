@@ -1,6 +1,7 @@
 // 書き出し: トラックごとの音・全トラックをまとめたミックスを WAV にする。
 // 混ぜ方は再生と同じ（音量 → パン）で、OfflineAudioContext で 44.1 kHz に作る（伴奏の音声の周波数が違っても変換される）。
-// 画面（side.ts の「書き出し」）とは分けてあるので、仕様や見た目を変えるときはここの ExportOptions を足し引きする。
+// 画面（dialogs.ts の「書き出し」）とは分けてあるので、仕様や見た目を変えるときはここの ExportOptions を足し引きする。
+// 音はいつも再生と同じ（ミュート・ソロ、トラックの音量とパン、エフェクターを反映）。それらを外す選択肢は置かない。
 import { audioBuffer } from "./audiofiles";
 import { buildFxChain } from "./fx";
 import { t as tx } from "./i18n";
@@ -10,29 +11,35 @@ export const SAMPLE_RATE = 44100;
 
 export interface ExportOptions {
   fileName: string; // 拡張子なし。トラックごとのファイルは「名前_トラック名.wav」
-  mixdown: boolean; // 全トラックをまとめたファイルも作る（消音・ソロに従う）
-  trackIds: number[]; // トラックごとに書き出すトラック
-  bypassMix: boolean; // トラックの音量とパンを掛けない
-  bypassFx: boolean; // エフェクトを掛けない
+  trackIds: number[]; // 「トラックを別々に書き出す」で選んでいるトラック
   channels: 1 | 2;
   bitDepth: 16 | 24 | 32; // 32 は浮動小数
 }
 
+/** 何を書き出すか: ミックス 1 本か、選んだトラックを別々にか。 */
+export type ExportWhat = "mix" | "tracks";
+
 export function defaultExportOptions(): ExportOptions {
-  return { fileName: tx("無題"), mixdown: true, trackIds: [], bypassMix: false, bypassFx: false, channels: 2, bitDepth: 16 };
+  return { fileName: tx("無題"), trackIds: [], channels: 2, bitDepth: 16 };
+}
+
+/** 書き出すファイルの名前。ミックスは「名前.wav」、トラックは「名前_トラック名.wav」（ファイル名に使えない文字は _）。 */
+export function exportFileName(base: string, track?: Track): string {
+  const safe = (s: string) => s.replace(/[\\/:*?"<>|]/g, "_");
+  return track ? `${safe(base)}_${safe(track.name)}.wav` : `${safe(base)}.wav`;
 }
 
 /** 歌のトラックの、曲の頭からの合成済みの波形（44.1 kHz）。 */
 export type VocalWav = (t: Track) => Float32Array | null;
 
 /** 書き出す長さ（秒）: いちばん遅く終わる音まで ＋ 0.5 秒（リバーブを掛けているトラックがあれば、その残響の長さも）。 */
-function songSeconds(p: Project, tracks: Track[], vocal: VocalWav, o: ExportOptions): number {
+function songSeconds(p: Project, tracks: Track[], vocal: VocalWav): number {
   let end = 0;
   let tail = 0.5;
   for (const t of tracks) {
     if (isAudioTrack(t)) end = Math.max(end, trackRegion(t, p.beatsPerBar).end * secPerTick(p.bpm));
     else end = Math.max(end, (vocal(t)?.length ?? 0) / SAMPLE_RATE);
-    if (!o.bypassFx && t.fx?.reverb.on) tail = Math.max(tail, t.fx.reverb.decay + t.fx.reverb.preDelay / 1000);
+    if (t.fx?.reverb.on) tail = Math.max(tail, t.fx.reverb.decay + t.fx.reverb.preDelay / 1000);
   }
   return end + tail;
 }
@@ -60,22 +67,20 @@ async function mix(p: Project, tracks: Track[], vocal: VocalWav, o: ExportOption
       src.start(0);
     }
     let out: AudioNode = src;
-    if (!o.bypassFx && t.fx && !isAudioTrack(t)) {
+    if (t.fx && !isAudioTrack(t)) {
       const fx = buildFxChain(ctx);
       fx.update(t.fx);
       out.connect(fx.input);
       out = fx.output;
     }
-    if (!o.bypassMix) {
-      const g = ctx.createGain();
-      const db = t.gain ?? 0;
-      g.gain.value = db > -24 ? 10 ** (db / 20) : 0;
-      out = out.connect(g);
-      if (o.channels === 2) {
-        const pan = ctx.createStereoPanner();
-        pan.pan.value = t.pan ?? 0;
-        out = out.connect(pan);
-      }
+    const g = ctx.createGain();
+    const db = t.gain ?? 0;
+    g.gain.value = db > -24 ? 10 ** (db / 20) : 0;
+    out = out.connect(g);
+    if (o.channels === 2) {
+      const pan = ctx.createStereoPanner();
+      pan.pan.value = t.pan ?? 0;
+      out = out.connect(pan);
     }
     out.connect(ctx.destination);
   }
@@ -116,19 +121,18 @@ export function encodeWav(chs: Float32Array[], bitDepth: 16 | 24 | 32, sr = SAMP
   return new Blob([data], { type: "audio/wav" });
 }
 
-/** 書き出すファイルを作る（ミックス、トラックごと）。 */
-export async function buildExports(p: Project, vocal: VocalWav, o: ExportOptions): Promise<Array<{ name: string; blob: Blob }>> {
+/** 書き出すファイルを作る。"mix" は全トラックをまとめた 1 本（ミュート・ソロに従う）、"tracks" は o.trackIds のトラックを別々に。 */
+export async function buildExports(p: Project, vocal: VocalWav, o: ExportOptions, what: ExportWhat): Promise<Array<{ name: string; blob: Blob }>> {
   const files: Array<{ name: string; blob: Blob }> = [];
-  const safe = (s: string) => s.replace(/[\\/:*?"<>|]/g, "_");
-  const sec = songSeconds(p, p.tracks, vocal, o);
-  if (o.mixdown) {
+  const sec = songSeconds(p, p.tracks, vocal);
+  if (what === "mix") {
     const anySolo = p.tracks.some((t) => t.solo);
     const audible = p.tracks.filter((t) => !t.mute && (!anySolo || t.solo));
-    files.push({ name: `${safe(o.fileName)}.wav`, blob: encodeWav(await mix(p, audible, vocal, o, sec), o.bitDepth) });
-  }
-  for (const t of p.tracks.filter((x) => o.trackIds.includes(x.id))) {
-    files.push({ name: `${safe(o.fileName)}_${safe(t.name)}.wav`,
-                 blob: encodeWav(await mix(p, [t], vocal, o, sec), o.bitDepth) });
+    files.push({ name: exportFileName(o.fileName), blob: encodeWav(await mix(p, audible, vocal, o, sec), o.bitDepth) });
+  } else {
+    for (const t of p.tracks.filter((x) => o.trackIds.includes(x.id))) {
+      files.push({ name: exportFileName(o.fileName, t), blob: encodeWav(await mix(p, [t], vocal, o, sec), o.bitDepth) });
+    }
   }
   return files;
 }

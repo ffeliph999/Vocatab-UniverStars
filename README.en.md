@@ -34,7 +34,6 @@ your machine. The same UI can also be driven by a local Python engine (onnxrunti
 - Autosave in the browser; project files (.svsproj, or .zip with the audio)
 
 ![Pitch and intonation](docs/gif/02_pitch.gif) ![Retake](docs/gif/03_retake.gif)
-![Breaths and effects](docs/gif/04_breath_fx.gif) ![Export](docs/gif/05_export.gif)
 
 ## Speed and memory
 
@@ -84,7 +83,7 @@ Measured on a MacBook Air (Apple silicon, 16 GB).
 
 ### Export and save
 
-- "Export" (top right) writes WAV files, per track or as a mixdown, once rendering has finished.
+- "Export" (top right): "Export mix" writes one WAV of all tracks; open "Export tracks separately" to pick tracks for per-track WAVs. The sound is the same as playback (mute/solo, track volume and pan, effects). Wait until rendering has finished.
 - "File → Save" writes a `.svsproj` (score and settings, without backing audio); "Export with audio" writes a `.zip` that includes the backing tracks. Edits are also autosaved in the browser.
 
 ### Keyboard
@@ -146,7 +145,7 @@ The bundled `leapsinger_ja_3singer` has three Japanese singers (Oniku Kurumi, Na
 [voicebanks/leapsinger_ja_3singer/README.md](voicebanks/leapsinger_ja_3singer/README.md).
 
 To add your own model, write `voicebanks/<name>/voicebank.yaml` (model files, singers, language, default vocoder) and run
-`python tools/export_web_assets.py` to regenerate `web.json` and `web_index.json`. `publish: false` keeps a voicebank out of the browser list (Python only). Languages are added as PrettyPitch language packs (`dict/<lang>.yaml`); a Korean G2P lives in `ui/src/engine-web/g2p_ko.ts`.
+`python tools/export_web_assets.py` to regenerate `web.json` and `web_index.json`. `publish: false` keeps a voicebank out of the browser list (Python only); the same flag works in a vocoder's `vocoder.yaml`. Languages are added as PrettyPitch language packs (`dict/<lang>.yaml`); a Korean G2P lives in `ui/src/engine-web/g2p_ko.ts`.
 
 ## Development
 

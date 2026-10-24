@@ -328,6 +328,22 @@ label.check.disabled { opacity: 0.45; cursor: not-allowed; }
 .dlg-body { padding: 10px 20px 18px; }
 .dlg-sub { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 14px 0 8px; font-size: 11px;
   font-weight: 700; letter-spacing: 0.08em; color: var(--muted); }
+.row2 .pair { display: flex; gap: 6px; }
+.row2 .pair select { flex: 1; min-width: 0; }
+/* 書き出し: 「トラックを別々に書き出す」の折りたたみ。名前やファイル名が長くても行の中で省略する */
+.ex-more { margin-top: 14px; padding-top: 8px; border-top: 1px solid var(--line); }
+.ex-more summary { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; cursor: pointer; list-style: none; }
+.ex-more summary::-webkit-details-marker { display: none; }
+.ex-more summary::before { content: ""; width: 0; height: 0; border-left: 5px solid var(--muted); border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent; transition: transform 0.12s; }
+.ex-more[open] summary::before { transform: rotate(90deg); }
+.ex-more summary .muted { font-weight: 400; }
+.ex-track { display: flex; align-items: center; gap: 8px; padding: 6px 4px 6px 8px; font-size: 12px; cursor: pointer; }
+.ex-track + .ex-track { border-top: 1px solid var(--line); }
+.ex-track .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ex-track .file { max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted);
+  font: 11px ui-monospace, Menlo, monospace; }
+.ex-track.off .name, .ex-track.off .file { opacity: 0.5; }
 .miss-list { margin: 10px 0; padding: 8px 8px 8px 24px; border-radius: 8px; background: var(--pr-bg); font-size: 12px; }
 .swatches { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .sw { width: 28px; height: 28px; padding: 0; border: 2px solid var(--panel); border-radius: 50%; box-shadow: 0 0 0 1px var(--line); cursor: pointer; }

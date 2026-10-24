@@ -315,59 +315,7 @@ async def scenario_03_retake(pg: Page):
     await pg.stop()
 
 
-async def scenario_04_breath_fx(pg: Page):
-    """ブレスを入れ、エフェクターを掛ける"""
-    await open_editor(pg, "lang=ja&gif=1")
-    await pg.ev("(async () => { const t0 = Date.now(); while (Date.now() - t0 < 10000) { if (window.__svs.derived().breaths.length) return 'ok'; await new Promise(r => setTimeout(r, 200)); } return 'no'; })()")
-    pg.start()
-    await pg.cap("音素のタイミングの「+ br」をクリックするとブレスが入る")
-    b = await pg.ev("(() => { const d = window.__svs.derived(); const b = d.breaths[0]; const v = window.__svs.view; const spt = 60 / window.__svs.store.project.bpm / 480; return [v.tickToX((b.start + b.cut) / spt), v.tickToX(b.end / spt)]; })()")
-    r = await pg.rect("#bottom-panels .bpanel canvas", 1)  # 2 つ目のパネル = 音素のタイミング
-    await pg.click(r["x"] + (b[0] + b[1]) / 2, r["cy"])
-    await pg.hold(1.5)
-    await pg.cap("エフェクター: 声の地図の EQ、コンプレッサー、リバーブ")
-    await pg.ev("document.querySelector('#side-body').scrollTo({top: 99999, behavior: 'smooth'})")
-    await pg.hold(0.8)
-    sw = await pg.rect(".side-sec .switch", 0)
-    await pg.click(sw["cx"], sw["cy"])
-    await pg.hold(0.5)
-    eq = await pg.rect(".fx-graph", 0)
-    px, py = eq["x"] + eq["w"] * 0.62, eq["y"] + eq["h"] * 0.5
-    await pg.dblclick(px, py)
-    await pg.hold(0.3)
-    await pg.drag([(px, py), (px, py - eq["h"] * 0.22)], 0.6)
-    await pg.hold(0.8)
-    rv = await pg.rect(".fx-graph", 2)
-    await pg.ev("document.querySelectorAll('.side-sec .switch')[2].click()")
-    await pg.hold(0.4)
-    await pg.cap("リバーブは残響の形を直接さわる（始まり・量・長さ）")
-    # 量の点（山）を少し上へ
-    await pg.drag([(rv["x"] + rv["w"] * 0.11, rv["y"] + rv["h"] * 0.4), (rv["x"] + rv["w"] * 0.11, rv["y"] + rv["h"] * 0.25)], 0.6)
-    await pg.hold(1.2)
-    await pg.cap("")
-    await pg.hold(0.4)
-    await pg.stop()
-
-
-async def scenario_05_export(pg: Page):
-    """WAV の書き出し"""
-    await open_editor(pg, "lang=ja&gif=1")
-    pg.start()
-    await pg.cap("「書き出し」で WAV を書き出す（トラック別かミックス）")
-    b = await pg.rect("#btn-export")
-    await pg.click(b["cx"], b["cy"])
-    await pg.hold(1.2)
-    go = await pg.rect("#ex-go")
-    await pg.ev("(async () => { const t0 = Date.now(); while (Date.now() - t0 < 60000) { const b = document.querySelector('#ex-go'); if (b && !b.disabled) return 'ok'; await new Promise(r => setTimeout(r, 200)); } return 'no'; })()")
-    await pg.click(go["cx"], go["cy"])
-    await pg.hold(2.5)
-    await pg.cap("")
-    await pg.hold(0.4)
-    await pg.stop()
-
-
-SCENARIOS = {"01_notes": scenario_01_notes, "02_pitch": scenario_02_pitch, "03_retake": scenario_03_retake,
-             "04_breath_fx": scenario_04_breath_fx, "05_export": scenario_05_export}
+SCENARIOS = {"01_notes": scenario_01_notes, "02_pitch": scenario_02_pitch, "03_retake": scenario_03_retake}
 
 
 def save_gif(frames: list[Image.Image], path: Path, fps: int, width: int):
