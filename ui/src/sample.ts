@@ -39,16 +39,12 @@ const OPENING = MELODY.slice(0, 15);
 
 export function sampleProject(): Project {
   const lead = build(OPENING, 4, 0, 1);
-  // ハモリ: 同じ所を 4 度下（「他のトラック」の表示用）
-  const harm = build(OPENING, 4, -5, 1000);
   const p: Project = {
     bpm: 80,
     beatsPerBar: 4,
     activeTrack: 0,
     tracks: [
       { id: 1, name: tx("メロディ"), voice: "ritsu", color: "", notes: lead, mute: false, solo: false,
-        base: defaultBase(), params: {} },
-      { id: 2, name: tx("ハモリ"), voice: "natsume", color: "", notes: harm, mute: false, solo: false,
         base: defaultBase(), params: {} },
     ],
   };

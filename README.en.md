@@ -29,7 +29,7 @@ your machine. The same UI can also be driven by a local Python engine (onnxrunti
 - Phoneme-boundary dragging; breaths made from each singer's real inhalations
 - Voice adjustments: loudness, tension, breathiness, gender, voicing, consonant strength, resonance, growl (per track + curves)
 - Effects: a "voice map" equalizer drawn over the voice's own spectrum, a compressor, and a reverb you shape directly
-- Backing tracks (drop wav / mp3 / flac), MusicXML and UST import, WAV export (per track or mixdown)
+- Backing tracks (drop wav / mp3 / flac), MusicXML and UST import (UST may use VCV lyrics and breath marks), WAV export (per track or mixdown)
 - UI in Japanese, English, Chinese and Korean; accent colour and mel colour-map settings
 - Autosave in the browser; project files (.svsproj, or .zip with the audio)
 
@@ -154,7 +154,7 @@ npx -p typescript@5.6.3 tsc --noEmit -p ui/tsconfig.json      # type check
 python tools/devtest/i18n_keys.py                             # translation keys
 python tools/golden/dump_golden.py                            # render the test scores with the Python engine and dump every stage to ui/test/golden/
 npx esbuild@0.25.0 ui/test/durations.test.ts --bundle --platform=node --format=esm --outfile=<tmp>/t.mjs && node <tmp>/t.mjs
-                                                              # durations, f0, synth, breath (host code matches Python bit for bit)
+                                                              # durations, f0, synth, breath, ust (host code matches Python bit for bit)
 python tools/run_e2e.py                                       # headless Chrome, score → waveform, compared with Python
 ```
 

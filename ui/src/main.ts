@@ -427,6 +427,7 @@ const revealNotes = (t: Track): void => {
   view.topPitch = Math.min(Math.max(...ps) + 1.5, Math.min(...ps) - 1 + vis);
   view.emit();
 };
+files.breathContext = (t) => renderer.breathContext(t);
 files.onImport = (t) => {
   arr.reveal(t);
   revealNotes(t);
@@ -598,13 +599,13 @@ if (q.get("demo") === "export") {
   setTimeout(wait, 1000);
 }
 if (q.get("demo") === "arrtest") {
-  // 画面の確認用: 編曲を拡大・右へスクロールし、ハモリを右クリックのメニューで消し、メロディの名前を変える
+  // 画面の確認用: 編曲を拡大・右へスクロールし、2 つ目のトラックがあれば右クリックのメニューで消し、メロディの名前を変える
   setTimeout(() => {
     const c = $("arr-canvas");
     c.dispatchEvent(new WheelEvent("wheel", { deltaY: -110, ctrlKey: true, clientX: 0, bubbles: true, cancelable: true }));
     c.dispatchEvent(new WheelEvent("wheel", { deltaX: 120, bubbles: true, cancelable: true }));
     const rows = document.querySelectorAll<HTMLElement>(".track-row");
-    rows[1].dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 200, clientY: 200 }));
+    rows[1]?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 200, clientY: 200 }));
     document.querySelectorAll<HTMLButtonElement>(".pop-menu button")[1]?.click();
     document.querySelector<HTMLElement>(".track-row .name")?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
     const inp = document.querySelector<HTMLInputElement>(".track-row input.rename");

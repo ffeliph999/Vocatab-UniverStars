@@ -28,7 +28,7 @@
 - 音素の境界の調整（ドラッグ）、ブレス（息継ぎ）の挿入（歌い手ごとに実際の息から作った素材）
 - 声の調整: 音量・テンション・ブレシネス・ジェンダー・有声度・子音の強さ・響き・うなり（トラック全体 + 曲線）
 - エフェクター: 声の地図のイコライザー（声のスペクトルの上に点を置く）・コンプレッサー・リバーブ（残響の形を直接さわる）
-- 伴奏トラック（wav・mp3・flac をドロップ）、MusicXML / UST の読み込み、WAV の書き出し（トラック別・ミックス）
+- 伴奏トラック（wav・mp3・flac をドロップ）、MusicXML / UST の読み込み（UST は連続音の歌詞や「息」も読む）、WAV の書き出し（トラック別・ミックス）
 - 画面の言語: 日本語・英語・中国語・韓国語。アクセントカラーと mel の配色の設定
 - 自動保存（ブラウザの中）、プロジェクトの保存（.svsproj / 音声も含めた .zip）
 
@@ -153,7 +153,7 @@ npx -p typescript@5.6.3 tsc --noEmit -p ui/tsconfig.json      # 型検査
 python tools/devtest/i18n_keys.py                             # 翻訳の鍵の過不足
 python tools/golden/dump_golden.py                            # Python 版で試験用の楽譜を合成し、段ごとの値を ui/test/golden/ に書く
 npx esbuild@0.25.0 ui/test/durations.test.ts --bundle --platform=node --format=esm --outfile=<作業用>/t.mjs && node <作業用>/t.mjs
-                                                              # durations・f0・synth・breath の 4 本（前後の処理は Python とビット単位で一致）
+                                                              # durations・f0・synth・breath・ust の 5 本（前後の処理は Python とビット単位で一致）
 python tools/run_e2e.py                                       # ヘッドレス Chrome で楽譜から波形まで Python と比べる
 ```
 

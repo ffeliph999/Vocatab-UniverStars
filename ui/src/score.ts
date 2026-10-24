@@ -9,7 +9,8 @@ import { t as tx } from "./i18n";
 
 export interface ScoreTrack {
   name: string;
-  notes: Array<{ onset: number; dur: number; pitch: number; lyric: string }>; // 刻み（4 分音符 = 480）
+  /** 刻み（4 分音符 = 480）。breath: 直前にブレスの記号（UST の「息」など）があった音符 */
+  notes: Array<{ onset: number; dur: number; pitch: number; lyric: string; breath?: boolean }>;
 }
 export interface ScoreResult {
   bpm: number;
@@ -27,20 +28,62 @@ interface RawNote {
   midi: number;
   lyric: string | null;
   rest: boolean;
+  breath?: boolean; // ブレスの記号の休符（次の音符にブレスを入れる印）
 }
 
-/** 休符を除き、刻みに直す。歌詞の無い音符は「-」（メリスマ）にする。 */
+/** 休符を除き、刻みに直す。歌詞の無い音符は「-」（メリスマ）にする。ブレスの記号の後の最初の音符に breath を付ける。 */
 function toTrack(name: string, notes: RawNote[]): ScoreTrack {
   const out: ScoreTrack["notes"] = [];
   let beat = 0;
+  let breath = false;
   for (const n of notes) {
     if (!n.rest && n.midi > 0) {
       out.push({ onset: Math.round(beat * TPQ), dur: Math.max(1, Math.round(n.beats * TPQ)), pitch: n.midi,
-                 lyric: (n.lyric ?? "-").trim() || "-" });
+                 lyric: (n.lyric ?? "-").trim() || "-", ...(breath ? { breath: true } : {}) });
+      breath = false;
+    } else if (n.breath) {
+      breath = true;
     }
     beat += n.beats;
   }
   return { name, notes: out };
+}
+
+// ── UTAU の歌詞の記法 ──
+// UST には UTAU の音源向けの書き方が混じるので、読み込みのときだけここで単独音の仮名に直す（Python の score_io にはこの正規化は無い）:
+//   連続音「a か」「- か」「n か」→「か」、仮名に続けて書いた音高や音源の接尾辞「のA#4」「うLR」「か↑」→「の」「う」「か」、
+//   カタカナ→ひらがな、「・」「＼」（声門閉鎖・母音の抜き）→ 伸ばし、
+//   「息」「息吸」「息捨」「吸」「ブレス」「br」→ 休符（次の音符にブレスを入れる印）、
+//   仮名でも音素の並びでもない語（「ust by …」のような覚え書き）→ 休符（注意を出す）
+const VCV_PREFIX = /^(?:-|[aiueonAIUEON])\s+(\S+)$/;
+const KANA_SUFFIX = /^(.*[^\x00-\x7f])(?:[A-G]#?\d|[A-Za-z↑↓]{1,3})$/;
+const EXTEND_MARKS = new Set(["・", "＼", "\\"]);
+const BREATH_LYRICS = /^(?:息\S*|吸\S*|呼吸|ブレス|br|breath)$/i;
+const kataToHira = (s: string): string => s.replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));
+
+export interface UstLyric {
+  lyric: string;
+  rest: boolean;
+  breath: boolean;     // ブレスの記号だった
+  vcv: boolean;        // 連続音の書き方だった
+  unreadable: boolean; // 仮名でも音素でもないので休符にした
+}
+
+export function normalizeUstLyric(raw: string): UstLyric {
+  let s = raw.trim();
+  const m = VCV_PREFIX.exec(s);
+  const vcv = m !== null;
+  if (m) s = m[1];
+  s = s.replace(KANA_SUFFIX, "$1");
+  if (EXTEND_MARKS.has(s)) s = "-";
+  if (BREATH_LYRICS.test(s)) return { lyric: "", rest: true, breath: true, vcv, unreadable: false };
+  if (REST_LYRICS.has(s) && !MELISMA_LYRICS.has(s)) return { lyric: s, rest: true, breath: false, vcv, unreadable: false };
+  s = kataToHira(s);
+  // 空白で区切られていて、仮名が混じる（「ust by 柘榴つくも」）か、音素の名前にしては長い語がある（「ust by someone」）→ 読めない
+  const toks = s.split(/\s+/);
+  const unreadable = toks.length > 1 && (/[^\x00-\x7f]/.test(s) || toks.some((x) => x.length > 3));
+  if (unreadable) return { lyric: raw, rest: true, breath: false, vcv, unreadable: true };
+  return { lyric: s, rest: false, breath: false, vcv, unreadable: false };
 }
 
 // ── UST ─────────────────────────────────────
@@ -66,6 +109,9 @@ export function parseUst(bytes: Uint8Array): ScoreResult {
   const tm = /^Tempo=([\d.]+)/m.exec(txt);
   const bpm = tm ? Number(tm[1]) : 120;
   const notes: RawNote[] = [];
+  let vcv = 0;
+  let breaths = 0;
+  const unreadable: string[] = [];
   const re = /\[#(\d+|PREV|NEXT)\]([\s\S]*?)(?=\[#|$)/g;
   for (let m = re.exec(txt); m; m = re.exec(txt)) {
     const f: Record<string, string> = {};
@@ -74,11 +120,19 @@ export function parseUst(bytes: Uint8Array): ScoreResult {
       if (kv) f[kv[1]] = kv[2];
     }
     if (!("Length" in f)) continue;
-    const lyric = (f.Lyric ?? "").trim();
-    const rest = REST_LYRICS.has(lyric) && !MELISMA_LYRICS.has(lyric);
-    notes.push({ beats: Number(f.Length) / TPQ, midi: Number(f.NoteNum || 0) || 0, lyric, rest });
+    const u = normalizeUstLyric(f.Lyric ?? "");
+    if (u.vcv) vcv++;
+    if (u.breath) breaths++;
+    if (u.unreadable) unreadable.push(u.lyric);
+    notes.push({ beats: Number(f.Length) / TPQ, midi: Number(f.NoteNum || 0) || 0, lyric: u.lyric, rest: u.rest, breath: u.breath });
   }
-  return { bpm, tracks: [toTrack("", notes)], warnings: [] };
+  const warnings: string[] = [];
+  if (vcv) warnings.push(tx("連続音の歌詞 {n} 個を単独音に直しました", { n: vcv }));
+  if (breaths) warnings.push(tx("ブレスの記号 {n} 個を休符にしました", { n: breaths }));
+  if (unreadable.length) {
+    warnings.push(tx("読めない歌詞 {n} 個を休符にしました: {list}", { n: unreadable.length, list: [...new Set(unreadable)].slice(0, 5).join("、") }));
+  }
+  return { bpm, tracks: [toTrack("", notes)], warnings };
 }
 
 // ── MusicXML ──────────────────────────────────

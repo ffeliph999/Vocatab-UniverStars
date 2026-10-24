@@ -7,6 +7,8 @@ import {
   autosave, bundle, clearAutosave, migrate, missingAudio, openBundle, relink, serialize,
 } from "./projectfile";
 import { parseScoreFile, type ScoreResult } from "./score";
+import { addOrCycleBreath } from "./breath";
+import type { BreathContext } from "./derive";
 import type { Store } from "./store";
 
 interface FsHandle {
@@ -28,6 +30,8 @@ export class FileMenu {
   private dirty = false;
   /** 楽譜を読み込んで足したトラック（画面をそこへ動かすため） */
   onImport: (t: Track) => void = () => undefined;
+  /** 楽譜のブレスの記号（UST の「息」など）を音符のブレスにするための、ブレスの束（main.ts が renderer のものを入れる） */
+  breathContext: (t: Track) => BreathContext | undefined = () => undefined;
   /** 楽譜を読み込むとき、歌詞に合う歌い手を選ぶ（今の歌い手のままでよければ null）。main.ts がエンジンの一覧から決める */
   pickVoice: (lyrics: string[], cur: { voice: string; voicebank?: string }) => { voice: string; voicebank: string } | null =
     () => null;
@@ -95,11 +99,11 @@ export class FileMenu {
     Object.assign(m.style, { left: `${r.left}px`, top: `${r.bottom + 4}px` });
     const items: Array<[string, string, () => void]> = [
       [tx("新規"), tx("サンプル曲から始める"), () => void this.newProject()],
-      [tx("開く…"), tx("⌘O　.svsproj か、音声も含めた .zip"), () => void this.openFile()],
+      [tx("開く"), tx("⌘O　.svsproj か、音声も含めた .zip"), () => void this.openFile()],
       [tx("保存"), "⌘S", () => void this.save()],
-      [tx("名前を付けて保存…"), "⇧⌘S", () => void this.saveAs()],
-      [tx("音声も含めて書き出す…"), tx("伴奏の音声もまとめた .zip（人に渡す・別の PC へ移す）"), () => void this.saveBundle()],
-      [tx("楽譜を読み込む…"), tx("MusicXML（.musicxml・.xml・.mxl）・UST。新しい歌のトラックにする"), () => void this.importScore()],
+      [tx("名前を付けて保存"), "⇧⌘S", () => void this.saveAs()],
+      [tx("音声も含めて書き出す"), tx("伴奏の音声もまとめた .zip"), () => void this.saveBundle()],
+      [tx("楽譜を読み込む"), tx("MusicXML（.musicxml・.xml・.mxl）・UST。新しい歌のトラックにする"), () => void this.importScore()],
     ];
     for (const [label, sub, fn] of items) {
       const b = document.createElement("button");
@@ -182,7 +186,7 @@ export class FileMenu {
       box.innerHTML = `<h3>${tx("伴奏の音声が見つかりません")}</h3>
         <p class="hint">${tx("プロジェクトファイルには伴奏の音声は含まれていません。元の音声ファイルを選択してください（複数選択可。内容で照合するため、移動や名前変更があっても問題ありません）。")}</p>
         <ul class="miss-list">${miss.map((m) => `<li>${m.fileName ?? m.name}</li>`).join("")}</ul>
-        <div class="btn-row"><button class="small" id="rl-pick">${tx("ファイルを選ぶ…")}</button>
+        <div class="btn-row"><button class="small" id="rl-pick">${tx("ファイルを選ぶ")}</button>
           <button class="small" id="rl-later">${tx("あとで（音を出さずに続ける）")}</button></div><p class="hint" id="rl-msg"></p>`;
       box.querySelector("#rl-later")!.addEventListener("click", () => back.remove());
       box.querySelector("#rl-pick")!.addEventListener("click", () => void (async () => {
@@ -226,6 +230,7 @@ export class FileMenu {
     const first = Math.min(...j.tracks.flatMap((t) => t.notes.map((n) => n.onset)), Infinity);
     const offset = Number.isFinite(first) ? Math.max(0, p.beatsPerBar * TPQ - first) : 0;
     let nextId = st.nextId();
+    let breaths = 0;
     const base = f.name.replace(/\.[^.]+$/, "");
     for (const t of j.tracks) {
       if (!t.notes.length) continue;
@@ -241,6 +246,13 @@ export class FileMenu {
                                                   lyric: n.lyric, attrs: defaultAttrs() })),
       };
       tr.region = trackRegion(tr, p.beatsPerBar);
+      // 楽譜のブレスの記号の後の音符にブレスを入れる（この歌い手のブレスの束が読めていれば）
+      const ctx = this.breathContext(tr);
+      if (ctx) {
+        t.notes.forEach((n, i) => {
+          if (n.breath && addOrCycleBreath(tr.notes[i], ctx)) breaths++;
+        });
+      }
       p.tracks.push(tr);
       p.activeTrack = p.tracks.length - 1;
     }
@@ -249,9 +261,10 @@ export class FileMenu {
     st.changed("project");
     this.onImport(st.track);
     const n = j.tracks.reduce((a, t) => a + t.notes.length, 0);
+    const notes = j.warnings.concat(breaths ? [tx("ブレスを {n} 個入れました", { n: breaths })] : []);
     this.hint(tx("楽譜を読み込みました: {name}（{tracks} トラック、{notes} 音符、テンポ {bpm}）",
                  { name: f.name, tracks: j.tracks.length, notes: n, bpm: p.bpm }) +
-      (j.warnings.length ? tx("　注意: {w}", { w: j.warnings.join(" / ") }) : ""));
+      (notes.length ? tx("　注意: {w}", { w: notes.join(" / ") }) : ""));
   }
 
   // ── 保存 ────────────────────────────────
