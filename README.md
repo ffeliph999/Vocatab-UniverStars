@@ -2,7 +2,7 @@
 
 [English](README.en.md)
 
-歌声合成を、ブラウザのタブひとつで。
+ブラウザ上で動くフル機能の歌声合成ソフトです。
 
 ![VocaTab](docs/social_preview.png)
 
