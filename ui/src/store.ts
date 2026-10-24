@@ -1,7 +1,7 @@
 // プロジェクトと選択の入れ物。undo はプロジェクト全体の JSON を積む（モックなので素朴に）。
 import { defaultExportOptions, type ExportOptions } from "./export";
 import { t as tx } from "./i18n";
-import type { Project, Track } from "./model";
+import { growRegion, type Note, type Project, type Track } from "./model";
 
 // mix: トラックの音量・パン・消音（再生の混ぜ方だけ。合成し直さない）
 export type ChangeKind = "project" | "selection" | "playhead" | "view" | "settings" | "mix";
@@ -81,6 +81,52 @@ export class Store {
   pruneSelection(): void {
     const ids = new Set(this.track.notes.map((n) => n.id));
     for (const id of [...this.selected]) if (!ids.has(id)) this.selected.delete(id);
+  }
+
+  // ── コピーと貼り付け ──
+  /** コピーした音符（頭を 0 に寄せた相対の位置で持つ。プロジェクトの外なので undo に積まない）。トラックをまたいで貼れる */
+  clipboard: Note[] = [];
+
+  /** 選んだ音符を写す。写した数を返す */
+  copySelected(): number {
+    const sel = this.track.notes.filter((n) => this.selected.has(n.id));
+    if (!sel.length) return 0;
+    const t0 = Math.min(...sel.map((n) => n.onset));
+    this.clipboard = sel.map((n) => ({ ...structuredClone(n), onset: n.onset - t0 }));
+    return sel.length;
+  }
+
+  /** 写してから消す（切り取り）。消した数を返す */
+  cutSelected(): number {
+    const n = this.copySelected();
+    if (!n) return 0;
+    const before = this.snapshot();
+    this.track.notes = this.track.notes.filter((x) => !this.selected.has(x.id));
+    this.selected.clear();
+    this.commit(before);
+    this.changed("project");
+    this.changed("selection");
+    return n;
+  }
+
+  /** 写しを今のトラックの再生位置に貼る（相対の位置はそのまま、id は振り直す）。貼った音符を選ぶ。貼った数を返す */
+  paste(): number {
+    if (!this.clipboard.length) return 0;
+    const before = this.snapshot();
+    const base = Math.round(this.playTick);
+    const t = this.track;
+    let id = this.nextId();
+    this.selected.clear();
+    for (const c of this.clipboard) {
+      const n: Note = { ...structuredClone(c), id: id++, onset: base + c.onset };
+      t.notes.push(n);
+      growRegion(t, n, this.project.beatsPerBar);
+      this.selected.add(n.id);
+    }
+    this.commit(before);
+    this.changed("project");
+    this.changed("selection");
+    return this.clipboard.length;
   }
 
   on(fn: (kind: ChangeKind) => void): void {

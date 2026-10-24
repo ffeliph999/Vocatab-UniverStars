@@ -48,7 +48,7 @@ renderer.slotsFor = (tr) => (tr.id === store.track.id ? derived().breaths
   : derive(store.project, tr, renderer.connected ? renderer.phrases(tr) : undefined, renderer.breathContext(tr)).breaths);
 
 const status = $("status");
-const defaultHint = t("Space: 再生・一時停止　1: 選択　2: 鉛筆　3: ピッチのペン　Delete: 削除　⌘Z / ⇧⌘Z: 取り消し / やり直し　↑↓: 半音（⇧ でオクターブ）");
+const defaultHint = t("Space: 再生・一時停止　1: 選択　2: 鉛筆　3: ピッチのペン　Delete: 削除　⌘C / ⌘V: コピー / 再生位置に貼り付け　⌘Z / ⇧⌘Z: 取り消し / やり直し　↑↓: 半音（⇧ でオクターブ）");
 const hint = (s: string): void => { status.textContent = s || defaultHint; };
 hint("");
 
@@ -369,6 +369,18 @@ window.addEventListener("keydown", (e) => {
     e.preventDefault();
     s.selected = new Set(s.track.notes.map((n) => n.id));
     s.changed("selection");
+  } else if (mod && e.key.toLowerCase() === "c") {
+    e.preventDefault();
+    const n = s.copySelected();
+    hint(n ? t("{n} 個の音符をコピーしました", { n }) : t("コピーする音符を選んでください"));
+  } else if (mod && e.key.toLowerCase() === "x") {
+    e.preventDefault();
+    const n = s.cutSelected();
+    hint(n ? t("{n} 個の音符を切り取りました", { n }) : t("コピーする音符を選んでください"));
+  } else if (mod && e.key.toLowerCase() === "v") {
+    e.preventDefault();
+    const n = s.paste(); // 今のトラックの再生位置に（別のトラックにも貼れる）
+    hint(n ? t("{n} 個の音符を再生位置に貼り付けました", { n }) : t("貼り付ける音符がありません（先に ⌘C でコピー）"));
   } else if (e.key === "Delete" || e.key === "Backspace") {
     if (!s.selected.size) return;
     const before = s.snapshot();

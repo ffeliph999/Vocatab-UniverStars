@@ -88,7 +88,7 @@ Measured on a MacBook Air (Apple silicon, 16 GB).
 
 ### Keyboard
 
-`Space` play/pause　`1` select　`2` pencil　`3` pitch pen　`Delete` delete　`⌘Z` / `⇧⌘Z` undo / redo　`↑` `↓` semitone (`⇧` octave)　`⌘O` open　`⌘S` save　`⇧⌘S` save as
+`Space` play/pause　`1` select　`2` pencil　`3` pitch pen　`Delete` delete　`⌘C` / `⌘X` / `⌘V` copy / cut / paste at the playhead (into any track)　`⌘Z` / `⇧⌘Z` undo / redo　`↑` `↓` semitone (`⇧` octave)　`⌘O` open　`⌘S` save　`⇧⌘S` save as
 
 ### Settings
 
