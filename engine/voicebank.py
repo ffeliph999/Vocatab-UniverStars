@@ -53,6 +53,7 @@ class VocoderSpec:
     voice_params: bool
     hop: int = 256
     gain_db: float = 0.0     # 出力に掛ける補正（ボコーダの間で音量をそろえる）
+    publish: bool = True     # ブラウザ版の一覧（web_index.json）に載せるか。Python のエンジンは関係なく読む
 
     def to_json(self) -> dict:
         return {"key": self.key, "name": self.name, "kind": self.kind, "voice_params": self.voice_params,
@@ -85,7 +86,8 @@ def load_vocoder(d: Path) -> VocoderSpec:
     y = yaml.safe_load((d / "vocoder.yaml").read_text(encoding="utf-8"))
     return VocoderSpec(key=d.name, dir=d, name=y.get("name", d.name), kind=y.get("kind", ""),
                        onnx=_resolve(d, y.get("onnx")), voice_params=bool(y.get("voice_params", False)),
-                       hop=int((y.get("grid") or {}).get("hop", 256)), gain_db=float(y.get("gain_db", 0.0)))
+                       hop=int((y.get("grid") or {}).get("hop", 256)), gain_db=float(y.get("gain_db", 0.0)),
+                       publish=bool(y.get("publish", True)))
 
 
 def scan(root: Path) -> tuple[dict[str, Voicebank], dict[str, VocoderSpec]]:

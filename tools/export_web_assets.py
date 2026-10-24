@@ -81,6 +81,9 @@ def main():
         index["voicebanks"].append({**vb.to_json(), "web": rel(path)})
         print(f"{path}: {path.stat().st_size / 1e3:.0f} KB")
     for key, v in vocs.items():
+        if not v.publish:     # vocoder.yaml の publish: false（配布しないもの。Python のエンジンでは使える）
+            print(f"{key}: publish: false なので web_index.json には載せない")
+            continue
         y = yaml.safe_load((v.dir / "vocoder.yaml").read_text(encoding="utf-8"))
         index["vocoders"].append({**v.to_json(), "gain_db": v.gain_db, "onnx": rel(v.onnx),
                                   "bytes": v.onnx.stat().st_size, "grid": y.get("grid") or {}})

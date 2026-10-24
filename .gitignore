@@ -1,11 +1,14 @@
-# esbuild の出力（ui/src から作り直せる）
+# esbuild の出力（ui/src から作り直せる。GitHub Pages では Actions（.github/workflows/pages.yml）が作る）
 ui/dist/
 .DS_Store
 __pycache__/
 
-# ボイスバンクとボコーダ（重みは公開するリポジトリに入れない。学習データの規約による）
-voicebanks/
-vocoders/
+# ボイスバンクとボコーダ: 配布するもの（日本語 3 人と NHVSing）だけ追跡する。
+# それ以外（韓国語のボイスバンク、NSF-HiFiGAN）は規約と大きさの都合で入れない
+voicebanks/*
+!voicebanks/leapsinger_ja_3singer/
+vocoders/*
+!vocoders/nhvsing_v3_2_1/
 
 # プロジェクトと楽譜（歌詞・旋律は著作物のことが多いので入れない）
 svs_data/

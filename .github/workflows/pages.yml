@@ -1,0 +1,45 @@
+# GitHub Pages への配置: ui/dist を esbuild で作ってから、リポジトリの頭ごと Pages に置く
+# （index.html → ui/、web_index.json・voicebanks/・vocoders/ はそのまま配信）。
+# リポジトリの Settings → Pages → Source を "GitHub Actions" にしておく。
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build ui/dist
+        run: python3 tools/build.py
+        env:
+          npm_config_yes: "true"   # npx が esbuild を黙って入れる
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

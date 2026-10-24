@@ -42,20 +42,6 @@
     "sample_rate": 44100,
     "hop": 256
    }
-  },
-  {
-   "key": "pc_nsf_hifigan_44k_hop512",
-   "name": "NSF-HiFiGAN（PC、2025.02）",
-   "kind": "nsf_hifigan",
-   "voice_params": false,
-   "hop": 512,
-   "gain_db": 0.0,
-   "onnx": "vocoders/pc_nsf_hifigan_44k_hop512/vocoder.onnx",
-   "bytes": 56616643,
-   "grid": {
-    "sample_rate": 44100,
-    "hop": 512
-   }
   }
  ]
 }

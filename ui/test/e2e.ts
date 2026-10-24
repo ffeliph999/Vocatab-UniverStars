@@ -73,7 +73,7 @@ async function runCase(name: string): Promise<void> {
   const inp = c.input;
   const eng = new Engine(ort);
   // 画面と同じく既定は CPU（WASM）。?gpu=1 で WebGPU（F0・NSF-HiFiGAN）を試す
-  await eng.init(BASE, false, new URLSearchParams(location.search).get("gpu") === "1");
+  const index = await eng.init(BASE, false, new URLSearchParams(location.search).get("gpu") === "1");
   log(`計算の場所: F0 ${eng.device("f0")}、音響 ${eng.device("acoustic")}、NHVSing ${eng.device("nhvsing")}、NSF-HiFiGAN ${eng.device("nsf_hifigan")}`);
   // 雑音は Python 版と同じもの（句の順に使う）
   const f0q = c.phrases.map((p: any) => p.f0_run.feeds.noise as Float32Array);
@@ -99,6 +99,11 @@ async function runCase(name: string): Promise<void> {
     close(`句 ${i} の土台（log2）`, g.base, res.base_log2, 1e-5);
     for (let j = 0; j < w.synth.length; j++) {
       const s = w.synth[j];
+      if (!index.vocoders.some((v) => v.key === s.vocoder)) {
+        // 正解は Python 版が持つボコーダ全部で作るが、ブラウザ版の一覧（web_index.json）に無いもの（publish: false）は比べない
+        log(`飛ばす: ${s.vocoder}（ブラウザ版の一覧に無い）`);
+        continue;
+      }
       const log2 = new Float32Array(s.f0_hz.length);
       for (let k = 0; k < log2.length; k++) log2[k] = Math.log2(s.f0_hz[k]);
       const retakeMel: Record<string, number> = {};

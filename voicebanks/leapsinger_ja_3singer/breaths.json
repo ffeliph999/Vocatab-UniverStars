@@ -1,0 +1,570 @@
+{
+ "version": 1,
+ "bin": "breaths.bin",
+ "bin_bytes": 861696,
+ "dtype": "float16",
+ "layout": "mel_major",
+ "n_mels": 128,
+ "sr": 44100,
+ "hop": 256,
+ "mel": {
+  "n_fft": 2048,
+  "fmin": 40.0,
+  "fmax": 16000.0,
+  "log": "ln",
+  "floor": 1e-05
+ },
+ "ref_voice_db": -18.89,
+ "clips": [
+  {
+   "id": "oniku_01",
+   "singer": 0,
+   "offset": 0,
+   "frames": 74,
+   "sec": 0.43,
+   "gain_db": 0.0,
+   "src": "urashima_tarou 33.08s（ラベル br）",
+   "level_db": -24.6
+  },
+  {
+   "id": "oniku_02",
+   "singer": 0,
+   "offset": 9472,
+   "frames": 72,
+   "sec": 0.418,
+   "gain_db": 0.0,
+   "src": "urashima_tarou 28.33s（ラベル br）",
+   "level_db": -26.3
+  },
+  {
+   "id": "oniku_03",
+   "singer": 0,
+   "offset": 18688,
+   "frames": 71,
+   "sec": 0.412,
+   "gain_db": 0.0,
+   "src": "usagito_kame 30.66s（ラベル br）",
+   "level_db": -24.0
+  },
+  {
+   "id": "oniku_04",
+   "singer": 0,
+   "offset": 27776,
+   "frames": 70,
+   "sec": 0.406,
+   "gain_db": 0.0,
+   "src": "usagito_kame 15.15s（ラベル br）",
+   "level_db": -23.8
+  },
+  {
+   "id": "oniku_05",
+   "singer": 0,
+   "offset": 36736,
+   "frames": 72,
+   "sec": 0.418,
+   "gain_db": 0.0,
+   "src": "usagito_kame 26.12s（ラベル br）",
+   "level_db": -24.3
+  },
+  {
+   "id": "oniku_06",
+   "singer": 0,
+   "offset": 45952,
+   "frames": 46,
+   "sec": 0.267,
+   "gain_db": 0.0,
+   "src": "toryanse 39.75s（ラベル br）",
+   "level_db": -24.1
+  },
+  {
+   "id": "oniku_07",
+   "singer": 0,
+   "offset": 51840,
+   "frames": 76,
+   "sec": 0.441,
+   "gain_db": 0.0,
+   "src": "toryanse 15.49s（ラベル br）",
+   "level_db": -26.8
+  },
+  {
+   "id": "oniku_08",
+   "singer": 0,
+   "offset": 61568,
+   "frames": 75,
+   "sec": 0.435,
+   "gain_db": 0.0,
+   "src": "amehuri 11.04s（ラベル br）",
+   "level_db": -26.8
+  },
+  {
+   "id": "oniku_09",
+   "singer": 0,
+   "offset": 71168,
+   "frames": 80,
+   "sec": 0.464,
+   "gain_db": 0.0,
+   "src": "amehuri 43.33s（ラベル br）",
+   "level_db": -27.9
+  },
+  {
+   "id": "oniku_10",
+   "singer": 0,
+   "offset": 81408,
+   "frames": 56,
+   "sec": 0.325,
+   "gain_db": 0.0,
+   "src": "hotaruno_hikari 42.08s",
+   "level_db": -23.4
+  },
+  {
+   "id": "oniku_11",
+   "singer": 0,
+   "offset": 88576,
+   "frames": 68,
+   "sec": 0.395,
+   "gain_db": 0.0,
+   "src": "hotaruno_hikari 105.38s",
+   "level_db": -23.3
+  },
+  {
+   "id": "oniku_12",
+   "singer": 0,
+   "offset": 97280,
+   "frames": 67,
+   "sec": 0.389,
+   "gain_db": 0.0,
+   "src": "hotaruno_hikari 55.39s",
+   "level_db": -19.8
+  },
+  {
+   "id": "oniku_13",
+   "singer": 0,
+   "offset": 105856,
+   "frames": 67,
+   "sec": 0.389,
+   "gain_db": 0.0,
+   "src": "chouchou 73.81s",
+   "level_db": -21.8
+  },
+  {
+   "id": "oniku_14",
+   "singer": 0,
+   "offset": 114432,
+   "frames": 86,
+   "sec": 0.499,
+   "gain_db": 0.0,
+   "src": "shoujoujino_tanukibayashi 50.44s",
+   "level_db": -23.6
+  },
+  {
+   "id": "oniku_15",
+   "singer": 0,
+   "offset": 125440,
+   "frames": 77,
+   "sec": 0.447,
+   "gain_db": 0.0,
+   "src": "hato 32.44s",
+   "level_db": -26.0
+  },
+  {
+   "id": "oniku_16",
+   "singer": 0,
+   "offset": 135296,
+   "frames": 96,
+   "sec": 0.557,
+   "gain_db": 0.0,
+   "src": "chouchou 67.99s",
+   "level_db": -22.9
+  },
+  {
+   "id": "oniku_17",
+   "singer": 0,
+   "offset": 147584,
+   "frames": 92,
+   "sec": 0.534,
+   "gain_db": 0.0,
+   "src": "chouchou 33.66s",
+   "level_db": -25.3
+  },
+  {
+   "id": "oniku_18",
+   "singer": 0,
+   "offset": 159360,
+   "frames": 53,
+   "sec": 0.308,
+   "gain_db": 0.0,
+   "src": "shoujoujino_tanukibayashi 32.67s",
+   "level_db": -24.8
+  },
+  {
+   "id": "natsume_01",
+   "singer": 1,
+   "offset": 166144,
+   "frames": 106,
+   "sec": 0.615,
+   "gain_db": 0.0,
+   "src": "23 14.28s",
+   "level_db": -29.8
+  },
+  {
+   "id": "natsume_02",
+   "singer": 1,
+   "offset": 179712,
+   "frames": 80,
+   "sec": 0.464,
+   "gain_db": 0.0,
+   "src": "52 27.53s",
+   "level_db": -34.3
+  },
+  {
+   "id": "natsume_03",
+   "singer": 1,
+   "offset": 189952,
+   "frames": 79,
+   "sec": 0.459,
+   "gain_db": 0.0,
+   "src": "52 11.48s",
+   "level_db": -31.9
+  },
+  {
+   "id": "natsume_04",
+   "singer": 1,
+   "offset": 200064,
+   "frames": 69,
+   "sec": 0.401,
+   "gain_db": 0.0,
+   "src": "52 19.46s",
+   "level_db": -33.0
+  },
+  {
+   "id": "natsume_05",
+   "singer": 1,
+   "offset": 208896,
+   "frames": 65,
+   "sec": 0.377,
+   "gain_db": 0.0,
+   "src": "26 49.90s",
+   "level_db": -22.3
+  },
+  {
+   "id": "natsume_06",
+   "singer": 1,
+   "offset": 217216,
+   "frames": 71,
+   "sec": 0.412,
+   "gain_db": 0.0,
+   "src": "22 15.35s",
+   "level_db": -25.8
+  },
+  {
+   "id": "natsume_07",
+   "singer": 1,
+   "offset": 226304,
+   "frames": 50,
+   "sec": 0.29,
+   "gain_db": 0.0,
+   "src": "27 63.69s",
+   "level_db": -23.5
+  },
+  {
+   "id": "natsume_08",
+   "singer": 1,
+   "offset": 232704,
+   "frames": 54,
+   "sec": 0.313,
+   "gain_db": 0.0,
+   "src": "22 33.03s",
+   "level_db": -21.9
+  },
+  {
+   "id": "natsume_09",
+   "singer": 1,
+   "offset": 239616,
+   "frames": 54,
+   "sec": 0.313,
+   "gain_db": 0.0,
+   "src": "51 46.65s",
+   "level_db": -25.3
+  },
+  {
+   "id": "natsume_10",
+   "singer": 1,
+   "offset": 246528,
+   "frames": 55,
+   "sec": 0.319,
+   "gain_db": 0.0,
+   "src": "45 71.26s",
+   "level_db": -21.7
+  },
+  {
+   "id": "natsume_11",
+   "singer": 1,
+   "offset": 253568,
+   "frames": 72,
+   "sec": 0.418,
+   "gain_db": 0.0,
+   "src": "26 22.75s",
+   "level_db": -24.5
+  },
+  {
+   "id": "natsume_12",
+   "singer": 1,
+   "offset": 262784,
+   "frames": 47,
+   "sec": 0.273,
+   "gain_db": 0.0,
+   "src": "22 22.47s",
+   "level_db": -22.1
+  },
+  {
+   "id": "natsume_13",
+   "singer": 1,
+   "offset": 268800,
+   "frames": 87,
+   "sec": 0.505,
+   "gain_db": 0.0,
+   "src": "30 65.65s",
+   "level_db": -24.4
+  },
+  {
+   "id": "natsume_14",
+   "singer": 1,
+   "offset": 279936,
+   "frames": 51,
+   "sec": 0.296,
+   "gain_db": 0.0,
+   "src": "27 67.56s",
+   "level_db": -24.1
+  },
+  {
+   "id": "ritsu_01",
+   "singer": 2,
+   "offset": 286464,
+   "frames": 43,
+   "sec": 0.25,
+   "gain_db": 0.0,
+   "src": "boukyakumoyou 102.05s",
+   "level_db": -20.2
+  },
+  {
+   "id": "ritsu_02",
+   "singer": 2,
+   "offset": 291968,
+   "frames": 44,
+   "sec": 0.255,
+   "gain_db": 0.0,
+   "src": "Hearts 193.03s",
+   "level_db": -26.0
+  },
+  {
+   "id": "ritsu_03",
+   "singer": 2,
+   "offset": 297600,
+   "frames": 44,
+   "sec": 0.255,
+   "gain_db": 0.0,
+   "src": "Closetoyou 113.66s",
+   "level_db": -20.5
+  },
+  {
+   "id": "ritsu_04",
+   "singer": 2,
+   "offset": 303232,
+   "frames": 45,
+   "sec": 0.261,
+   "gain_db": 0.0,
+   "src": "kaleido_teto 57.96s",
+   "level_db": -29.3
+  },
+  {
+   "id": "ritsu_05",
+   "singer": 2,
+   "offset": 308992,
+   "frames": 45,
+   "sec": 0.261,
+   "gain_db": 0.0,
+   "src": "ERROR 64.80s",
+   "level_db": -17.0
+  },
+  {
+   "id": "ritsu_06",
+   "singer": 2,
+   "offset": 314752,
+   "frames": 45,
+   "sec": 0.261,
+   "gain_db": 0.0,
+   "src": "kaleido_ritsu 95.44s",
+   "level_db": -27.8
+  },
+  {
+   "id": "ritsu_07",
+   "singer": 2,
+   "offset": 320512,
+   "frames": 54,
+   "sec": 0.313,
+   "gain_db": 0.0,
+   "src": "Closetoyou 73.43s",
+   "level_db": -27.1
+  },
+  {
+   "id": "ritsu_08",
+   "singer": 2,
+   "offset": 327424,
+   "frames": 74,
+   "sec": 0.43,
+   "gain_db": 0.0,
+   "src": "Closetoyou 118.52s",
+   "level_db": -25.2
+  },
+  {
+   "id": "ritsu_09",
+   "singer": 2,
+   "offset": 336896,
+   "frames": 54,
+   "sec": 0.313,
+   "gain_db": 0.0,
+   "src": "GraveKeeper 62.91s",
+   "level_db": -27.3
+  },
+  {
+   "id": "ritsu_10",
+   "singer": 2,
+   "offset": 343808,
+   "frames": 45,
+   "sec": 0.261,
+   "gain_db": 0.0,
+   "src": "boukyakumoyou 70.67s",
+   "level_db": -27.6
+  },
+  {
+   "id": "ritsu_11",
+   "singer": 2,
+   "offset": 349568,
+   "frames": 55,
+   "sec": 0.319,
+   "gain_db": 0.0,
+   "src": "boukyakumoyou 107.54s",
+   "level_db": -25.5
+  },
+  {
+   "id": "ritsu_12",
+   "singer": 2,
+   "offset": 356608,
+   "frames": 54,
+   "sec": 0.313,
+   "gain_db": 0.0,
+   "src": "materialworld 48.27s",
+   "level_db": -21.0
+  },
+  {
+   "id": "ritsu_13",
+   "singer": 2,
+   "offset": 363520,
+   "frames": 49,
+   "sec": 0.284,
+   "gain_db": 0.0,
+   "src": "ERROR 62.93s",
+   "level_db": -18.2
+  },
+  {
+   "id": "ritsu_14",
+   "singer": 2,
+   "offset": 369792,
+   "frames": 55,
+   "sec": 0.319,
+   "gain_db": 0.0,
+   "src": "From13th 69.27s",
+   "level_db": -29.9
+  },
+  {
+   "id": "ritsu_15",
+   "singer": 2,
+   "offset": 376832,
+   "frames": 52,
+   "sec": 0.302,
+   "gain_db": 0.0,
+   "src": "Hearts 51.00s",
+   "level_db": -31.0
+  },
+  {
+   "id": "ritsu_16",
+   "singer": 2,
+   "offset": 383488,
+   "frames": 50,
+   "sec": 0.29,
+   "gain_db": 0.0,
+   "src": "reverse 33.46s",
+   "level_db": -25.3
+  },
+  {
+   "id": "ritsu_17",
+   "singer": 2,
+   "offset": 389888,
+   "frames": 48,
+   "sec": 0.279,
+   "gain_db": 0.0,
+   "src": "GraveKeeper 170.62s",
+   "level_db": -31.6
+  },
+  {
+   "id": "ritsu_18",
+   "singer": 2,
+   "offset": 396032,
+   "frames": 47,
+   "sec": 0.273,
+   "gain_db": 0.0,
+   "src": "kaleido_ritsu 114.16s",
+   "level_db": -31.9
+  },
+  {
+   "id": "ritsu_19",
+   "singer": 2,
+   "offset": 402048,
+   "frames": 46,
+   "sec": 0.267,
+   "gain_db": 0.0,
+   "src": "Paranoid 73.55s",
+   "level_db": -30.0
+  },
+  {
+   "id": "ritsu_20",
+   "singer": 2,
+   "offset": 407936,
+   "frames": 47,
+   "sec": 0.273,
+   "gain_db": 0.0,
+   "src": "ERROR 183.59s",
+   "level_db": -20.9
+  },
+  {
+   "id": "ritsu_21",
+   "singer": 2,
+   "offset": 413952,
+   "frames": 43,
+   "sec": 0.25,
+   "gain_db": 0.0,
+   "src": "checkitoutnow 106.25s",
+   "level_db": -24.8
+  },
+  {
+   "id": "ritsu_22",
+   "singer": 2,
+   "offset": 419456,
+   "frames": 43,
+   "sec": 0.25,
+   "gain_db": 0.0,
+   "src": "Worlds_End_Celebrate 51.52s",
+   "level_db": -23.1
+  },
+  {
+   "id": "ritsu_23",
+   "singer": 2,
+   "offset": 424960,
+   "frames": 46,
+   "sec": 0.267,
+   "gain_db": 0.0,
+   "src": "Worlds_End_Celebrate 155.97s",
+   "level_db": -20.3
+  }
+ ]
+}
