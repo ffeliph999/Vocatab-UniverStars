@@ -530,13 +530,16 @@ export class Arrangement {
     this.store.changed("project");
   }
 
+  /** 歌い手の表示名（main.ts が renderer のものを入れる。無ければ内部の名前） */
+  voiceLabel: (t: Track) => string = (t) => t.voice;
+
   renderList(): void {
     this.rows.innerHTML = "";
     this.store.project.tracks.forEach((t, i) => {
       const audio = isAudioTrack(t);
       const row = document.createElement("div");
       row.className = "track-row" + (i === this.store.project.activeTrack ? " active" : "") + (audio ? " audio" : "");
-      const sub = audio ? `<span class="wave-icon">〰</span>${t.audio?.name ?? ""}` : t.voice;
+      const sub = audio ? `<span class="wave-icon">〰</span>${t.audio?.name ?? ""}` : this.voiceLabel(t);
       row.innerHTML = `<div class="strip" style="background:${trackColor(this.store.project, t)}"></div>
         <div class="names"><div class="name" title="${tr("ダブルクリック: 名前を変える")}"></div><div class="voice">${sub}</div></div>`;
       row.querySelector<HTMLElement>(".name")!.textContent = t.name;

@@ -279,7 +279,6 @@ export const zh: Record<string, string> = {
   "{sec} 秒からのフレーズに不正な値が {n} 個ありました（無音に置き換えて再生します）": "从 {sec} 秒开始的乐句中有 {n} 个无效值（替换为静音播放）",
   "ボコーダ": "声码器",
   "NSF-HiFiGAN は調波・雑音の分岐を持たないため、音量とうなり以外は効きません。": "NSF-HiFiGAN 没有谐波和噪声分支，因此除音量和嘶吼外均无效。",
-  "NSF-HiFiGAN の ONNX がまだ vocoders/ に無いので、今は NHVSing で鳴らしています。": "vocoders/ 中还没有 NSF-HiFiGAN 的 ONNX，目前使用 NHVSing 发声。",
   "声の調整": "声音调整",
   "ダブルクリックで元に戻す": "双击复原",
   "解析完了": "已分析",

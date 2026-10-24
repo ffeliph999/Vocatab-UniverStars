@@ -18,7 +18,8 @@ import yaml
 @dataclass
 class Singer:
     id: int
-    name: str
+    name: str                                   # 内部の名前（プロジェクトに書かれる。例: ritsu）
+    display: dict[str, str] = field(default_factory=dict)  # 画面に出すフルネーム（言語 → 名前。例: {ja: 波音リツ, en: Namine Ritsu}）
 
 
 @dataclass
@@ -39,7 +40,7 @@ class Voicebank:
 
     def to_json(self) -> dict:
         return {"key": self.key, "name": self.name, "language": self.language,
-                "singers": [{"id": s.id, "name": s.name} for s in self.singers],
+                "singers": [{"id": s.id, "name": s.name, "display": s.display} for s in self.singers],
                 "default_vocoder": self.default_vocoder, "credits": self.credits}
 
 
@@ -77,7 +78,8 @@ def load_voicebank(d: Path) -> Voicebank:
         key=d.name, dir=d, name=y.get("name", d.name), language=y.get("language", "ja"),
         pipeline=y.get("pipeline", "prettypitch_leapsinger"), code=code,
         models={k: _resolve(d, v) for k, v in (y.get("models") or {}).items()},
-        singers=[Singer(int(s["id"]), str(s["name"])) for s in y.get("singers") or []],
+        singers=[Singer(int(s["id"]), str(s["name"]), {str(k): str(v) for k, v in (s.get("display") or {}).items()})
+                 for s in y.get("singers") or []],
         default_vocoder=y.get("default_vocoder", ""), credits=y.get("credits", ""),
         publish=bool(y.get("publish", True)), breaths=_resolve(d, y.get("breaths")), raw=y)
 

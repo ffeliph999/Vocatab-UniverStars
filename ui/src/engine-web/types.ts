@@ -70,8 +70,15 @@ export interface VocoderWeb {
   grid: { sample_rate?: number; hop?: number };
 }
 
+/** 歌い手: name は内部の名前（プロジェクトに書かれる）、display は画面に出すフルネーム（言語 → 名前。voicebank.yaml から） */
+export interface SingerInfo {
+  id: number;
+  name: string;
+  display?: Record<string, string>;
+}
+
 export interface WebIndex {
-  voicebanks: Array<{ key: string; name: string; language: string; singers: Array<{ id: number; name: string }>;
+  voicebanks: Array<{ key: string; name: string; language: string; singers: Array<SingerInfo>;
                       default_vocoder: string; credits: string; web: string; bytes: Record<string, number> }>;
   vocoders: VocoderWeb[];
 }

@@ -279,7 +279,6 @@ export const en: Record<string, string> = {
   "{sec} 秒からのフレーズに不正な値が {n} 個ありました（無音に置き換えて再生します）": "The phrase at {sec} s had {n} invalid samples (played as silence)",
   "ボコーダ": "Vocoder",
   "NSF-HiFiGAN は調波・雑音の分岐を持たないため、音量とうなり以外は効きません。": "NSF-HiFiGAN has no harmonic/noise branches, so only Volume and Growl take effect.",
-  "NSF-HiFiGAN の ONNX がまだ vocoders/ に無いので、今は NHVSing で鳴らしています。": "The NSF-HiFiGAN ONNX isn't in vocoders/ yet, so NHVSing is used for now.",
   "声の調整": "Voice",
   "ダブルクリックで元に戻す": "Double-click to reset",
   "解析完了": "Analyzed",

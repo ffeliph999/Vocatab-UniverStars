@@ -2,6 +2,7 @@
 // 音符ごとの設定は音符の小窓（notepop.ts）、書き出しはダイアログ（dialogs.ts）。
 import { addOrCycleBreath } from "./breath";
 import type { Derived } from "./derive";
+import { singerDisplay } from "./engine";
 import { FxPanel } from "./fxpanel";
 import { t as tx } from "./i18n";
 import { defaultBase, isAudioTrack, type VoiceBase } from "./model";
@@ -137,7 +138,7 @@ export class SidePanel {
     const t = this.store.track;
     const audio = isAudioTrack(t);
     if (!audio) {
-      this.section("voice", tx("歌い手と声"), `${t.voice} · ${this.store.vocoder === "nsf" ? "NSF-HiFiGAN" : "NHVSing"}`,
+      this.section("voice", tx("歌い手と声"), `${this.engine?.singerLabel(t) ?? t.voice} · ${this.store.vocoder === "nsf" ? "NSF-HiFiGAN" : "NHVSing"}`,
                    (el) => this.renderVoice(el));
       this.section("fx", tx("エフェクター"), this.fxSummary(), (el) => {
         this.fx = new FxPanel(this.store, (title) => {
@@ -205,8 +206,8 @@ export class SidePanel {
       `<option value="${vb}\t${n}" ${vb === (cur?.key ?? "") && n === t.voice ? "selected" : ""}>${label}</option>`;
     const options = eng
       ? eng.info!.voicebanks.map((vb) => eng.info!.voicebanks.length > 1
-        ? `<optgroup label="${vb.name}">${vb.singers.map((x) => opt(vb.key, x.name, x.name)).join("")}</optgroup>`
-        : vb.singers.map((x) => opt(vb.key, x.name, x.name)).join("")).join("")
+        ? `<optgroup label="${vb.name}">${vb.singers.map((x) => opt(vb.key, x.name, singerDisplay(x, x.name))).join("")}</optgroup>`
+        : vb.singers.map((x) => opt(vb.key, x.name, singerDisplay(x, x.name))).join("")).join("")
       : ["ritsu", "natsume", "oniku"].map((n) => opt("", n, n)).join("");
     const LANG_NAMES: Record<string, string> = { ja: tx("日本語"), ko: tx("韓国語") };
     const langCode = cur?.language ?? "ja";
@@ -225,25 +226,26 @@ export class SidePanel {
       s.commit(before);
       s.changed("project");
     });
-    const seg = document.createElement("div");
-    seg.className = "seg";
-    seg.title = tx("ボコーダ");
-    for (const [key, label] of [["nhv", "NHVSing v3.2.1"], ["nsf", "NSF-HiFiGAN"]] as const) {
-      const b = document.createElement("button");
-      b.textContent = label;
-      b.className = s.vocoder === key ? "on" : "";
-      b.addEventListener("click", () => {
-        s.vocoder = key;
-        s.changed("settings");
-      });
-      seg.appendChild(b);
-    }
-    head.appendChild(seg);
-    if (s.vocoder === "nsf") {
-      head.insertAdjacentHTML("beforeend", `<p class="hint">${tx("NSF-HiFiGAN は調波・雑音の分岐を持たないため、音量とうなり以外は効きません。")}</p>`);
-      if (this.engine?.connected && !this.engine.hasVocoder("nsf")) {
-        head.insertAdjacentHTML("beforeend",
-          `<p class="hint warn">${tx("NSF-HiFiGAN の ONNX がまだ vocoders/ に無いので、今は NHVSing で鳴らしています。")}</p>`);
+    // ボコーダの切り替えは、エンジンが NSF-HiFiGAN も持つときだけ出す（配布版は NHVSing だけ。Python 版で vocoders/ に置けば出る）
+    const nsfOk = !!this.engine?.connected && this.engine.hasVocoder("nsf");
+    if (!nsfOk && s.vocoder === "nsf") s.vocoder = "nhv";
+    if (nsfOk) {
+      const seg = document.createElement("div");
+      seg.className = "seg";
+      seg.title = tx("ボコーダ");
+      for (const [key, label] of [["nhv", "NHVSing v3.2.1"], ["nsf", "NSF-HiFiGAN"]] as const) {
+        const b = document.createElement("button");
+        b.textContent = label;
+        b.className = s.vocoder === key ? "on" : "";
+        b.addEventListener("click", () => {
+          s.vocoder = key;
+          s.changed("settings");
+        });
+        seg.appendChild(b);
+      }
+      head.appendChild(seg);
+      if (s.vocoder === "nsf") {
+        head.insertAdjacentHTML("beforeend", `<p class="hint">${tx("NSF-HiFiGAN は調波・雑音の分岐を持たないため、音量とうなり以外は効きません。")}</p>`);
       }
     }
     el.appendChild(head);

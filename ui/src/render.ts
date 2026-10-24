@@ -3,7 +3,7 @@
 // エンジンは engine-web/client.ts の窓口（既定はブラウザの中。Python のサーバーが配ったページや ?engine=server では手元の Python）。
 import { type BreathClipInfo, type BreathSlot, breathPart } from "./breath";
 import type { BreathContext } from "./derive";
-import { composeF0, type EngineInfo, type EPhrase, hashF32, phraseParams } from "./engine";
+import { composeF0, type EngineInfo, type EPhrase, hashF32, phraseParams, singerDisplay } from "./engine";
 import { type EngineClient, makeEngine } from "./engine-web/client";
 import { wavToMel } from "./engine-web/melspec";
 import type { RestoreEntry } from "./engine-web/protocol";
@@ -148,6 +148,12 @@ export class Renderer {
 
   singerId(track: Track): number {
     return this.voicebankOf(track).singers.find((s) => s.name === track.voice)?.id ?? 0;
+  }
+
+  /** トラックの歌い手の表示名（言語に合わせたフルネーム。つながる前は内部の名前） */
+  singerLabel(track: Track): string {
+    const s = this.connected ? this.voicebankOf(track).singers.find((x) => x.name === track.voice) : undefined;
+    return singerDisplay(s, track.voice);
   }
 
   /** 選んでいるボコーダの鍵（NSF-HiFiGAN が無ければ NHVSing を使う）。 */

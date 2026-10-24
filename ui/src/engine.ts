@@ -1,11 +1,19 @@
 // エンジン（engine/server.py）とのやり取りと、句ごとの最後の F0 の組み立て。
+import type { SingerInfo } from "./engine-web/types";
+import { getLang } from "./i18n";
 import { FPS, type Project, secPerTick, type Track } from "./model";
 import { evalCurve, paramDef, VOICE_KEYS } from "./params";
 
 export interface EngineInfo {
-  voicebanks: Array<{ key: string; name: string; language: string; singers: Array<{ id: number; name: string }>;
-                      default_vocoder: string }>;
+  voicebanks: Array<{ key: string; name: string; language: string; singers: SingerInfo[]; default_vocoder: string }>;
   vocoders: Array<{ key: string; name: string; kind: string; voice_params: boolean }>;
+}
+
+/** 歌い手の表示名: 画面が日本語なら日本語のフルネーム、それ以外は英語。ボイスバンクに無ければ内部の名前のまま */
+export function singerDisplay(s: SingerInfo | undefined, fallback: string): string {
+  const d = s?.display;
+  if (!d) return fallback;
+  return (getLang() === "ja" ? d.ja : d.en) ?? d.en ?? d.ja ?? fallback;
 }
 
 export interface EPhoneme {

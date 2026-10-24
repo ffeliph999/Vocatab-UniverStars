@@ -7,15 +7,27 @@
    "singers": [
     {
      "id": 0,
-     "name": "oniku"
+     "name": "oniku",
+     "display": {
+      "ja": "御丹宮くるみ",
+      "en": "Oniku Kurumi"
+     }
     },
     {
      "id": 1,
-     "name": "natsume"
+     "name": "natsume",
+     "display": {
+      "ja": "夏目悠李",
+      "en": "Natsume Yuuri"
+     }
     },
     {
      "id": 2,
-     "name": "ritsu"
+     "name": "ritsu",
+     "display": {
+      "ja": "波音リツ",
+      "en": "Namine Ritsu"
+     }
     }
    ],
    "default_vocoder": "nhvsing_v3_2_1",

@@ -57,6 +57,7 @@ const pr = new PianoRoll(store, view, derived, $("pr-canvas"), $<HTMLInputElemen
 const arr = new Arrangement(store, view, $("track-list"), $("arr-canvas"),
                             () => Math.max(0, pr.hc.w - KEY_W) / view.pxPerTick, hint, $("btn-add-track"), $("arr-resizer"));
 arr.fitHeight();
+arr.voiceLabel = (t) => renderer.singerLabel(t); // トラック一覧の歌い手はフルネームで
 // 音符の小窓（選んだ音符のそばに出る）
 const pop = new NotePopover(store, pr, derived, $("pr-wrap"));
 pr.popOpen = () => !pop.el.hidden;
@@ -96,7 +97,7 @@ const updateCardHead = (): void => {
   const t = store.track;
   $("cur-dot").style.background = trackColor(store.project, t);
   $("cur-name").textContent = t.name;
-  $("cur-voice").textContent = t.voice;
+  $("cur-voice").textContent = renderer.singerLabel(t);
 };
 updateCardHead();
 
@@ -162,6 +163,10 @@ function onEngineUpdate(): void {
     transport.engineWav = (t) => renderer.trackWav(t);
     // ピアノロールの下端の波形: 選んでいるトラックの、合成が済んだフレーズとブレスの波形（エフェクトの前）
     pr.waveSource = () => renderer.trackParts(store.track, derived().breaths).map((p) => ({ start: p.start / 44100, wav: p.wav }));
+    // 歌い手のフルネームはエンジンの一覧が届いてから分かるので、名前を出す所を描き直す
+    side.render();
+    arr.renderList();
+    updateCardHead();
   }
   document.querySelector(".brand .tag")!.textContent = renderer.connected ? t("実験版") : t("モック");
   if (!renderer.connected) {
