@@ -3,12 +3,12 @@ ui/dist/
 .DS_Store
 __pycache__/
 
-# ボイスバンクとボコーダ: 配布するもの（日本語 3 人と NHVSing）だけ追跡する。
-# それ以外（韓国語のボイスバンク、NSF-HiFiGAN）は規約と大きさの都合で入れない
+# Voicebanks e vocoders: só o que este repositório publica (Kazuo & Rinly, NHVSing reexportado e pc-nsf-hifigan).
 voicebanks/*
-!voicebanks/leapsinger_ja_3singer/
+!voicebanks/kazuo_rinly/
 vocoders/*
 !vocoders/nhvsing_v3_2_1/
+!vocoders/pc_nsf_hifigan_2025_02/
 
 # プロジェクトと楽譜（歌詞・旋律は著作物のことが多いので入れない）
 svs_data/

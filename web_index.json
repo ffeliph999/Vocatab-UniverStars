@@ -1,42 +1,34 @@
 {
  "voicebanks": [
   {
-   "key": "leapsinger_ja_3singer",
-   "name": "LeapSinger ja 3singer v2",
+   "key": "kazuo_rinly",
+   "name": "Kazuo & Rinly (LeapSinger fine-tune)",
    "language": "ja",
    "singers": [
     {
-     "id": 0,
-     "name": "oniku",
-     "display": {
-      "ja": "御丹宮くるみ",
-      "en": "Oniku Kurumi"
-     }
-    },
-    {
      "id": 1,
-     "name": "natsume",
+     "name": "Otomi_Kazuo",
      "display": {
-      "ja": "夏目悠李",
-      "en": "Natsume Yuuri"
+      "ja": "Otomi Kazuo",
+      "en": "Otomi Kazuo"
      }
     },
     {
      "id": 2,
-     "name": "ritsu",
+     "name": "Otozora_Rinly",
      "display": {
-      "ja": "波音リツ",
-      "en": "Namine Ritsu"
+      "ja": "Otozora Rinly",
+      "en": "Otozora Rinly"
      }
     }
    ],
-   "default_vocoder": "nhvsing_v3_2_1",
-   "credits": "歌声データ: おにく・夏目悠李・波音リツ（各データセットの規約に従う。非商用の研究）。 F0・子音の長さ: PrettyPitch。音響: LeapSinger。",
-   "web": "voicebanks/leapsinger_ja_3singer/web.json",
+   "default_vocoder": "pc_nsf_hifigan_2025_02",
+   "credits": "Vozes: Otomi Kazuo (Felipe Souza) e Otozora Rinly (UniverStars), publicadas com a permissão dos dois. Modelos ajustados a partir do LeapSinger v2 e do PrettyPitch (wavtechyukky), cujos modelos base foram treinados com Oniku Kurumi, Natsume Yuuri e Namine Ritsu (veja CREDITS.txt e 夏目悠李_利用規約.txt). Uso pessoal e não comercial.",
+   "web": "voicebanks/kazuo_rinly/web.json",
    "bytes": {
-    "acoustic": 54079951,
-    "f0": 7456868,
-    "cons_dur": 117161
+    "acoustic": 54078208,
+    "f0": 7460155,
+    "cons_dur": 120226
    }
   }
  ],
@@ -49,10 +41,24 @@
    "hop": 256,
    "gain_db": 0.0,
    "onnx": "vocoders/nhvsing_v3_2_1/vocoder.onnx",
-   "bytes": 6981501,
+   "bytes": 6980826,
    "grid": {
     "sample_rate": 44100,
     "hop": 256
+   }
+  },
+  {
+   "key": "pc_nsf_hifigan_2025_02",
+   "name": "pc-nsf-hifigan 2025.02",
+   "kind": "nsf_hifigan",
+   "voice_params": false,
+   "hop": 512,
+   "gain_db": 0.0,
+   "onnx": "vocoders/pc_nsf_hifigan_2025_02/vocoder.onnx",
+   "bytes": 56616643,
+   "grid": {
+    "sample_rate": 44100,
+    "hop": 512
    }
   }
  ]

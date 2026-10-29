@@ -1,0 +1,86 @@
+LeapSinger v2.0.0 — 配布モデルのクレジットと出典
+Credits and attribution for the distributed LeapSinger voice models
+====================================================================
+
+本モデル（日本語 3 話者の音響モデル）は、以下の歌声データベースを用いて学習しています。
+ご利用の際は、各データベースの利用規約に従ってください。とくに夏目悠李について
+は、出力音声に関する利用規約の全文を本アーカイブに同梱しています（下記参照）。
+
+This model (a three-singer Japanese acoustic model) was trained on the singing
+voice databases below. Please follow each database's terms of use. For Natsume
+Yuuri, the full terms for the output audio are bundled in this archive (see below).
+
+
+■ 同梱ファイル / Files in this archive
+--------------------------------------------------------------------
+
+・3singer_v2_student.pt
+    音響モデルのチェックポイント（V2: GAN を使わない 16 step の教師から蒸留した
+    1 step の生徒）。infer.py・export/cli.py・train --init_from で読めます。
+    optimizer は入っていないので学習の再開はできません。
+    The acoustic model checkpoint (V2: a 1-step student distilled from a GAN-free
+    16-step teacher). Loads in infer.py, export/cli.py and train --init_from.
+    No optimizer state, so it cannot resume training.
+
+・leapsinger_ja_3singer_v2.onnx
+    同じモデルの ONNX（hop 256、入力: tokens / durations / f0 / spk_embed、
+    励起の倍音は 1 つの Loop）。onnxruntime の CPU で動きます。
+    The same model as ONNX (hop 256; inputs tokens / durations / f0 / spk_embed;
+    the harmonic excitation folded into one Loop). Runs on onnxruntime CPU.
+
+・leapsinger_ja_3singer_v2.speakers.json
+    spk_embed に渡す話者ベクトル（id 0 御丹宮くるみ / 1 夏目悠李 / 2 波音リツ、256 次元）
+    と音素の一覧（tokens の id）。
+    The speaker vectors for spk_embed (id 0 Oniku Kurumi / 1 Natsume Yuuri /
+    2 Namine Ritsu, 256-dim) and the phoneme list (the ids for tokens).
+
+・CREDITS.txt（このファイル / this file）、夏目悠李_利用規約.txt
+
+
+■ 話者クレジット / Voice credits
+--------------------------------------------------------------------
+
+・御丹宮くるみ / Oniku Kurumi
+    御丹宮くるみ歌声データベース
+    https://onikuru.info/db-download/
+
+・夏目悠李 / Natsume Yuuri
+    歌声DB制作: アマノケイ ／ 音声提供者: 霧野蒼太
+    https://ksdcm1ng.wixsite.com/njksofficial/enunu-nnsvs
+    ※ 利用規約（出力音声に関する規約を含む全文）を本アーカイブに同梱しています:
+         「夏目悠李_利用規約.txt」
+       Please read the bundled terms of use.
+
+・波音リツ / Namine Ritsu
+    https://www.canon-voice.com/voicebanks/
+
+
+■ ボコーダー / 関連プロジェクト / Vocoder & related projects
+--------------------------------------------------------------------
+
+・NHVSing vocoder（リポジトリに同梱の checkpoints/nhv_v3_2_1.onnx を使います）
+    https://github.com/wavtechyukky/NHVSing/
+・Neural Homomorphic Vocoder (paper, Liu et al., Interspeech 2020)
+    https://www.isca-archive.org/interspeech_2020/liu20_interspeech.html
+・dsp (zjlww)
+    https://github.com/zjlww/dsp
+
+
+■ 利用上の注意 / Notes on use
+--------------------------------------------------------------------
+
+・本モデルは個人・非営利での利用を前提としています。商用利用や、法人による配布・
+  利用は、各データベースの規約に従って事前の許諾・問い合わせが必要な場合があり
+  ます。
+・利用条件の詳細は、各データベースの公式規約（上記URL）と、本アーカイブ同梱の
+  「夏目悠李_利用規約.txt」を必ずご確認ください。本ファイルの
+  記載はあくまで概要であり、正確な条件は各公式規約が優先します。
+
+・This model is intended for personal, non-commercial use. Commercial use, or
+  distribution/use by an organization, may require prior permission from the
+  respective databases. This file is only a summary; the official terms of each
+  database, and the bundled Natsume Yuuri terms, take precedence.
+
+
+--------------------------------------------------------------------
+LeapSinger : https://github.com/wavtechyukky/LeapSinger

@@ -1,7 +1,8 @@
-# NHVSing v3.2.1（調波と雑音の 2 枝を持つ NHV 系。ボイスパラメータは出力の枝に掛ける）
-# 作り方: tools/export_nhv_params.py（重みは research/NHVSing/exported_models/v3_2_1/nhv_v3_2_1.pth）
-# 入力 mel [1,T,128]（ln-mel）・f0 [1,1,T]（Hz）・uv [1,1,T]（1 = 無声）・noise [1,1,T,256]（標準正規）。
-# 出力 waveform・harmonic・noise_out・env_h・env_n（フィルタの滑らかな包絡 [1,T,513]）
+# NHVSing v3.2.1 (wavtechyukky/NHVSing, código MIT; pesos de uso não comercial, veja o README do NHVSing).
+# Exportado para este repositório a partir dos pesos publicados (NHVSing exported_models/v3_2_1/nhv_v3_2_1.pth,
+# commit b77ade3) com tools/export_nhv_params.py do VocaTab; não é o arquivo distribuído pelo VocaTab.
+# Entradas mel [1,T,128] (ln-mel), f0 [1,1,T] (Hz), uv [1,1,T] (1 = surdo), noise [1,1,T,256];
+# saídas waveform, harmonic, noise_out, env_h, env_n.
 name: NHVSing v3.2.1
 kind: nhvsing
 onnx: vocoder.onnx

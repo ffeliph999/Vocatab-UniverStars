@@ -1,0 +1,23 @@
+# Otomi Kazuo e Otozora Rinly: fine-tune do LeapSinger v2 (acústico) e do PrettyPitch (F0 e duração das consoantes).
+# Os ids 1 e 2 são os slots do modelo base que as duas vozes ocupam; o slot 0 não é usado (speakers.json não o traz).
+name: Kazuo & Rinly (LeapSinger fine-tune)
+language: ja
+pipeline: prettypitch_leapsinger
+grid: {sample_rate: 44100, hop: 256}
+code:
+  prettypitch: ../../../PrettyPitch   # só a versão Python local usa (ou o PRETTYPITCH_ROOT); o site lê o web.json
+models:
+  acoustic: acoustic.onnx
+  speakers: speakers.json
+  f0: f0.onnx
+  cons_dur: cons_dur.onnx
+  cons_dur_profile: cons_dur_profile.json
+singers:
+  - {id: 1, name: Otomi_Kazuo, display: {ja: Otomi Kazuo, en: Otomi Kazuo}}
+  - {id: 2, name: Otozora_Rinly, display: {ja: Otozora Rinly, en: Otozora Rinly}}
+default_vocoder: pc_nsf_hifigan_2025_02
+publish: true
+credits: >-
+  Vozes: Otomi Kazuo (Felipe Souza) e Otozora Rinly (UniverStars), publicadas com a permissão dos dois.
+  Modelos ajustados a partir do LeapSinger v2 e do PrettyPitch (wavtechyukky), cujos modelos base foram treinados com
+  Oniku Kurumi, Natsume Yuuri e Namine Ritsu (veja CREDITS.txt e 夏目悠李_利用規約.txt). Uso pessoal e não comercial.

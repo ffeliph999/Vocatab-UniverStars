@@ -81,9 +81,10 @@ export class PianoRoll {
   constructor(private store: Store, private view: View, private derived: () => Derived,
               canvas: HTMLCanvasElement, private input: HTMLInputElement, private hint: (s: string) => void) {
     this.hc = new HiDpiCanvas(canvas, () => this.draw());
-    canvas.addEventListener("pointerdown", (e) => this.onDown(e));
-    canvas.addEventListener("pointermove", (e) => this.onMove(e));
-    canvas.addEventListener("pointerup", () => this.onUp());
+    canvas.addEventListener("pointerdown", (e) => { if (!this.touchDown(e)) this.onDown(e); });
+    canvas.addEventListener("pointermove", (e) => { if (!this.touchMove(e)) this.onMove(e); });
+    canvas.addEventListener("pointerup", (e) => { if (!this.touchUp(e)) this.onUp(); });
+    canvas.addEventListener("pointercancel", (e) => { if (!this.touchUp(e)) this.onUp(); });
     canvas.addEventListener("dblclick", (e) => this.onDbl(e));
     canvas.addEventListener("wheel", (e) => this.onWheel(e), { passive: false });
     canvas.addEventListener("contextmenu", (e) => e.preventDefault());
@@ -371,6 +372,70 @@ export class PianoRoll {
   private onDbl(e: MouseEvent): void {
     const hit = this.hitNote(e.offsetX, e.offsetY);
     if (hit) this.startLyricEdit(hit.note);
+  }
+
+  // ── タッチ（スマートフォン）: 1 本指はふだんの道具。2 本指でドラッグするとスクロール、つまむと横の拡大縮小。
+  // 音符をダブルタップすると歌詞。2 本目の指が来たら、1 本目で始めた編集は取り消す ─────────
+  private touches = new Map<number, { x: number; y: number }>();
+  private pinch: { dist: number; mx: number; my: number } | null = null;
+  private lastTap = { t: 0, x: 0, y: 0 };
+
+  private pinchState(): { dist: number; mx: number; my: number } {
+    const [a, b] = [...this.touches.values()];
+    return { dist: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
+  }
+
+  /** true = タッチの操作としてここで扱った（ふだんの onDown は呼ばない） */
+  private touchDown(e: PointerEvent): boolean {
+    if (e.pointerType !== "touch") return false;
+    this.touches.set(e.pointerId, { x: e.offsetX, y: e.offsetY });
+    if (this.touches.size >= 2) {
+      if (!this.pinch) {
+        const d = this.drag;
+        if (d && "before" in d) {
+          this.store.project = JSON.parse(d.before);
+          this.store.changed("project");
+        }
+        this.drag = null;
+        this.pressed = null;
+        this.clickedNote = false;
+        this.closePop();               // 1 本目の指が音符に触れて開いた小窓も閉じる
+      }
+      this.pinch = this.pinchState();   // 指を置き直したときも、今の 2 本から測り直す
+      return true;
+    }
+    const now = performance.now();
+    if (now - this.lastTap.t < 320 && Math.hypot(e.offsetX - this.lastTap.x, e.offsetY - this.lastTap.y) < 24) {
+      const hit = this.hitNote(e.offsetX, e.offsetY);
+      if (hit) {
+        this.lastTap.t = 0;
+        this.startLyricEdit(hit.note);
+        return true;
+      }
+    }
+    this.lastTap = { t: now, x: e.offsetX, y: e.offsetY };
+    return false;
+  }
+
+  private touchMove(e: PointerEvent): boolean {
+    if (e.pointerType !== "touch" || !this.touches.has(e.pointerId)) return false;
+    this.touches.set(e.pointerId, { x: e.offsetX, y: e.offsetY });
+    if (!this.pinch) return false;
+    if (this.touches.size < 2) return true;
+    const p = this.pinchState();
+    const v = this.view;
+    v.scrollBy(-(p.mx - this.pinch.mx) / v.pxPerTick, (p.my - this.pinch.my) / v.pxPerSemi);
+    v.zoomX(p.dist / this.pinch.dist, Math.max(KEY_W, p.mx));
+    this.pinch = p;
+    return true;
+  }
+
+  private touchUp(e: PointerEvent): boolean {
+    if (e.pointerType !== "touch") return false;
+    this.touches.delete(e.pointerId);
+    if (!this.pinch) return false;
+    if (this.touches.size === 0) this.pinch = null;
+    return true;
   }
 
   private onWheel(e: WheelEvent): void {

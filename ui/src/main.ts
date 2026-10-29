@@ -246,18 +246,30 @@ $<HTMLSelectElement>("snap").addEventListener("change", (e) => {
 
 // 左の帯の開け閉め（カードの見出しの左端）。開け閉めはこのブラウザに覚えておく（読めなくても開いた状態で動く）
 const SIDE_KEY = "svs-editor.sidebar";
+const narrow = (): boolean => matchMedia("(max-width: 760px)").matches;
 const setSide = (open: boolean): void => {
   $("app").classList.toggle("side-closed", !open);
   $("btn-side").classList.toggle("on", !open);
+  if (narrow()) return;   // スマートフォンの引き出しの開け閉めは覚えない（広い画面の設定を変えない）
   try {
     localStorage.setItem(SIDE_KEY, open ? "open" : "closed");
   } catch { /* 保存できなくても開け閉めはできる */ }
 };
 $("btn-side").innerHTML = ICONS.sidebar;
 $("btn-side").addEventListener("click", () => setSide($("app").classList.contains("side-closed")));
-try {
-  if (localStorage.getItem(SIDE_KEY) === "closed") setSide(false);
-} catch { /* 読めなければ開いたまま */ }
+// スマートフォン（style.css の max-width: 760px）: 左の帯は上に重なる引き出し。最初は閉じ（覚えている開け閉めは
+// 使わず、書き換えもしない）、帯の外（暗くした所 = #app の ::after）を押すと閉じる
+if (narrow()) {
+  $("app").classList.add("side-closed");
+  $("btn-side").classList.add("on");
+} else {
+  try {
+    if (localStorage.getItem(SIDE_KEY) === "closed") setSide(false);
+  } catch { /* 読めなければ開いたまま */ }
+}
+$("app").addEventListener("click", (e) => {
+  if (narrow() && e.target === $("app")) setSide(false);
+});
 
 for (const b of document.querySelectorAll<HTMLButtonElement>(".fold")) {
   b.addEventListener("click", () => {

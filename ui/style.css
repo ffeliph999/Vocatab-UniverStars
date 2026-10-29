@@ -355,3 +355,41 @@ label.check.disabled { opacity: 0.45; cursor: not-allowed; }
   background: var(--panel2); color: var(--text); font-size: 12px; text-align: left; cursor: pointer; }
 .melmap.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .mm-bar { display: block; height: 18px; border-radius: 5px; }
+
+/* ── スマートフォン（狭い画面）: 左の帯は上に重なる引き出し（最初は閉じる、外を押すと閉じる）、カードは全幅、
+   見出しの帯は折り返す、指で押しやすい大きさ。ピアノロールは 2 本指でスクロール・つまんで拡大（pianoroll.ts） ── */
+@media (max-width: 760px) {
+  #app, #app.side-closed { grid-template-columns: minmax(0, 1fr); height: 100vh; height: 100dvh; }
+  #sidebar { position: fixed; z-index: 50; top: 0; bottom: 0; left: 0; width: min(88vw, 340px);
+    border-right: 1px solid var(--line); box-shadow: 6px 0 28px rgba(0, 0, 0, 0.5); transition: transform 0.18s ease; }
+  #app.side-closed #sidebar { transform: translateX(-105%); }
+  #app:not(.side-closed)::after { content: ""; position: fixed; inset: 0; z-index: 40; background: rgba(0, 0, 0, 0.45); }
+  #main, #app.side-closed #main { padding: 0; }
+  #card { border: none; border-radius: 0; }
+
+  .card-head { height: auto; flex-wrap: wrap; gap: 6px; padding: 6px 8px; }
+  .card-head .grow { display: none; }
+  #btn-side { order: 0; }
+  .card-track { order: 1; flex: 1; min-width: 0; overflow: hidden; margin-right: 0; }
+  .card-track .muted { overflow: hidden; text-overflow: ellipsis; }
+  #btn-export { order: 2; }
+  #transport { order: 3; flex: 1 1 100%; justify-content: center; }
+  #tools { order: 4; }
+  #views { order: 5; }
+  #snap { order: 6; flex: 1; min-width: 0; }
+
+  .icon-btn, .head-transport .icon-btn { width: 40px; height: 36px; }
+  .btn, .menu-btn { padding: 8px 14px; font-size: 13.5px; }
+  select { padding: 7px 8px; }
+  .seg button { padding: 9px 4px; font-size: 13px; }
+  button.small { padding: 7px 11px; font-size: 12.5px; }
+  .field, .row2 { margin: 9px 0; font-size: 13px; }
+  .tab { height: 32px; padding: 0 14px; font-size: 12.5px; }
+
+  #arr-body { height: 56px; }
+  #tabbar { padding: 6px 8px; overflow-x: auto; scrollbar-width: none; }
+  #tabbar::-webkit-scrollbar { display: none; }
+  #bottom-panels { max-height: 36dvh; overflow-y: auto; }
+  #status { padding: 0 10px; }
+  .note-pop { width: min(276px, calc(100vw - 16px)); }
+}

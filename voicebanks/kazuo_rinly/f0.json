@@ -128,7 +128,7 @@
     "ritsu_soft": 2
   },
   "lang": "ja",
-  "source_ckpt": "f0_3singer.pt",
+  "source_ckpt": "f0_vozes.pt",
   "opset": 17,
   "config": {
     "arch": "f0_3ch_diffusion",

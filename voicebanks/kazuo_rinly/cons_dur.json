@@ -10,6 +10,7 @@
     "prev_note_dur",
     "next_note_dur",
     "pitch_diff",
+    "cluster_len",
     "spk_id",
     "style_id"
   ],
@@ -129,22 +130,17 @@
   "n_speakers": 3,
   "n_styles": 3,
   "spk_map": {
-    "oniku": 0,
-    "natsume": 1,
-    "ritsu": 2,
-    "ritsu_normal": 2,
-    "ritsu_soft": 2
+    "Otomi_Kazuo": 1,
+    "Otozora_Rinly": 2,
+    "_slot0": 0
   },
   "style_map": {
-    "oniku": 0,
-    "natsume": 0,
-    "ritsu": 0,
-    "ritsu_normal": 1,
-    "ritsu_soft": 2
+    "Otomi_Kazuo": 0,
+    "Otozora_Rinly": 0
   },
-  "profile_hint": "duration_model/profiles/cons_dur_3singer.json",
-  "source_ckpt": "cons_dur_3singer.pt",
+  "profile_hint": "duration_model/profiles/best.json",
+  "source_ckpt": "best.ckpt",
   "opset": 17,
-  "use_cluster_len": false,
+  "use_cluster_len": true,
   "use_wide_context": false
 }

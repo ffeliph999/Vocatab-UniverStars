@@ -146,14 +146,20 @@ export class Renderer {
     return vbs.find((v) => v.key === track.voicebank) ?? vbs[0];
   }
 
+  /** トラックの歌い手。プロジェクトの声がこのボイスバンクに無ければ（見本の "ritsu" など）最初の歌い手 */
+  private singerOf(track: Track) {
+    const sg = this.voicebankOf(track).singers;
+    return sg.find((s) => s.name === track.voice) ?? sg[0];
+  }
+
   singerId(track: Track): number {
-    return this.voicebankOf(track).singers.find((s) => s.name === track.voice)?.id ?? 0;
+    return this.singerOf(track)?.id ?? 0;
   }
 
   /** トラックの歌い手の表示名（言語に合わせたフルネーム。つながる前は内部の名前） */
   singerLabel(track: Track): string {
-    const s = this.connected ? this.voicebankOf(track).singers.find((x) => x.name === track.voice) : undefined;
-    return singerDisplay(s, track.voice);
+    const s = this.connected ? this.singerOf(track) : undefined;
+    return singerDisplay(s, s?.name ?? track.voice);
   }
 
   /** 選んでいるボコーダの鍵（NSF-HiFiGAN が無ければ NHVSing を使う）。 */

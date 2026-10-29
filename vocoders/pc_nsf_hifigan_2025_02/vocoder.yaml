@@ -1,0 +1,11 @@
+# pc-nsf-hifigan 44.1k hop512 128bin 2025.02, do DiffSinger Community Vocoder Project (OpenVPI):
+# https://openvpi.github.io/vocoders/ — licença CC BY-NC-SA 4.0 (https://creativecommons.org/licenses/by-nc-sa/4.0/).
+# Redistribuído sem modificações; aviso de atribuição e agradecimentos em NOTICE.txt. Outras versões e atualizações
+# deste vocoder estão no site oficial acima.
+# Entradas mel [1,T,128] (ln-mel, 40-16000 Hz) e f0 [1,T] (Hz) no hop 512; o motor converte o hop 256 do LeapSinger.
+# Sem os ramos harmônico/ruído: dos ajustes de voz, só volume e rouquidão funcionam.
+name: pc-nsf-hifigan 2025.02
+kind: nsf_hifigan
+onnx: vocoder.onnx
+grid: {sample_rate: 44100, hop: 512}
+voice_params: false

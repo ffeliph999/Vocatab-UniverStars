@@ -11,7 +11,7 @@ export class Store {
   selected = new Set<number>();
   playTick = 0;
   version = 0; // プロジェクトが変わるたびに増える（計算の結果の取り置きに使う）
-  vocoder: "nhv" | "nsf" = "nhv";
+  vocoder: "nhv" | "nsf" = "nsf"; // NSF-HiFiGAN が無ければ side.ts が NHVSing に戻す
   /** 書き出しの設定（プロジェクトの外。undo に積まない） */
   exportOpts: ExportOptions = defaultExportOptions();
   private undoStack: string[] = [];
