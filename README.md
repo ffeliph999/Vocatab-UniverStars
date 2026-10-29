@@ -1,4 +1,4 @@
-# VocaTab — Otomi Kazuo & Otozora Rinly
+# VocaTab — UniverStars
 
 Editor de canto que roda no navegador, com as vozes **Otomi Kazuo** e **Otozora Rinly**. É um fork do
 [VocaTab](https://github.com/wavtechyukky/vocatab) (wavtechyukky, código MIT). Tudo roda no próprio navegador
