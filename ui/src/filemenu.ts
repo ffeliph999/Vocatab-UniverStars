@@ -7,6 +7,7 @@ import {
   autosave, bundle, clearAutosave, migrate, missingAudio, openBundle, relink, serialize,
 } from "./projectfile";
 import { parseScoreFile, type ScoreResult } from "./score";
+import { toUstx } from "./ustx";
 import { addOrCycleBreath } from "./breath";
 import type { BreathContext } from "./derive";
 import type { Store } from "./store";
@@ -103,7 +104,8 @@ export class FileMenu {
       [tx("保存"), "⌘S", () => void this.save()],
       [tx("名前を付けて保存"), "⇧⌘S", () => void this.saveAs()],
       [tx("音声も含めて書き出す"), tx("伴奏の音声もまとめた .zip"), () => void this.saveBundle()],
-      [tx("楽譜を読み込む"), tx("MusicXML（.musicxml・.xml・.mxl）・UST。新しい歌のトラックにする"), () => void this.importScore()],
+      [tx("楽譜を読み込む"), tx("MusicXML（.musicxml・.xml・.mxl）・UST・USTX。新しい歌のトラックにする"), () => void this.importScore()],
+      [tx("USTX に書き出す"), tx("OpenUtau のプロジェクト（音符・歌詞・テンポ）"), () => void this.exportUstx()],
     ];
     for (const [label, sub, fn] of items) {
       const b = document.createElement("button");
@@ -213,7 +215,7 @@ export class FileMenu {
   /** MusicXML・UST を読み、歌詞のあるパートごとに新しい歌のトラックを足す（最初の音符は 2 小節目より後ろに）。
    *  読み取りはブラウザの中（score.ts）。テンポは楽譜の値に合わせる。 */
   async importScore(file?: File): Promise<void> {
-    const f = file ?? await pickFile(".musicxml,.xml,.mxl,.ust");
+    const f = file ?? await pickFile(".musicxml,.xml,.mxl,.ust,.ustx");
     if (!f) return;
     let j: ScoreResult;
     try {
@@ -308,6 +310,31 @@ export class FileMenu {
     download(new Blob([text], { type: "application/json" }), name);
     this.dirty = false;
     this.showState(tx("ダウンロードしました"));
+  }
+
+  /** 歌のトラックを OpenUtau の .ustx に書き出す（音符・歌詞・テンポ・拍子。ピッチの線や表情は OpenUtau 側で付ける）。 */
+  private async exportUstx(): Promise<void> {
+    if (!this.store.project.tracks.some((t) => !isAudioTrack(t) && t.notes.length)) {
+      window.alert(tx("書き出す音符がありません"));
+      return;
+    }
+    const blob = new Blob([toUstx(this.store.project, this.store.projectName)], { type: "text/yaml" });
+    const name = `${this.store.projectName}.ustx`;
+    if (w.showSaveFilePicker) {
+      try {
+        const h = await w.showSaveFilePicker({ suggestedName: name,
+                                               types: [{ description: tx("OpenUtau のプロジェクト"), accept: { "text/yaml": [".ustx"] } }] });
+        const wr = await h.createWritable();
+        await wr.write(blob);
+        await wr.close();
+        this.hint(tx("USTX に書き出しました: {name}", { name: h.name }));
+      } catch {
+        // 選ばずに閉じた
+      }
+      return;
+    }
+    download(blob, name);
+    this.hint(tx("USTX に書き出しました: {name}", { name }));
   }
 
   private async saveBundle(): Promise<void> {

@@ -12,6 +12,8 @@ export const ICONS: Record<string, string> = {
   follow: svg('<path d="M3 8h8M8 5l3 3-3 3M13 3v10"/>'),
   select: svg('<path d="M4 2.5l8 5-3.6.9 2.2 4.3-1.6.8-2.2-4.3L4 11.6z"/>'),
   draw: svg('<path d="M3 13l1-3.5 6.5-6.5 2.5 2.5L6.5 12z M9.5 4l2.5 2.5"/>'),
+  // 手（表示をつかんで動かす。スマートフォン用の道具）
+  hand: svg('<path d="M5.5 8.5V3.8a1 1 0 0 1 2 0V8M7.5 7.5V2.8a1 1 0 0 1 2 0V8M9.5 7.8V3.8a1 1 0 0 1 2 0v5.4a4.3 4.3 0 0 1-4.3 4.3h-.4a4 4 0 0 1-3.2-1.6L1.9 9.8a1 1 0 0 1 1.5-1.3l2.1 1.8"/>'),
   pitchpen: svg('<path d="M1.5 11c2-5 3.5-5 5 0s3 5 4.5 0"/><path d="M12 2.5l1.5 1.5-3 3-1.8.3.3-1.8z"/>'),
   showpitch: svg('<path d="M1.5 10c2.5-6 4-6 6.5-1s4 5 6.5-1"/>'),
   showphone: svg('<path d="M2.5 4h11M2.5 8h7M2.5 12h9"/>'),

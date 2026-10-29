@@ -3,12 +3,11 @@ ui/dist/
 .DS_Store
 __pycache__/
 
-# Voicebanks e vocoders: só o que este repositório publica (Kazuo & Rinly, NHVSing reexportado e pc-nsf-hifigan).
+# Voicebanks e vocoders: só o que este repositório publica (Kazuo & Rinly e o NHVSing reexportado).
 voicebanks/*
 !voicebanks/kazuo_rinly/
 vocoders/*
 !vocoders/nhvsing_v3_2_1/
-!vocoders/pc_nsf_hifigan_2025_02/
 
 # プロジェクトと楽譜（歌詞・旋律は著作物のことが多いので入れない）
 svs_data/

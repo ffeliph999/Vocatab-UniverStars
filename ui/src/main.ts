@@ -202,13 +202,19 @@ function onEngineUpdate(): void {
 // ── ツールバー ─────────────────────────────
 const tools = $("tools");
 const TOOL_DEFS: Array<[Tool, string, string, boolean]> = [
+  ["pan", "hand", t("表示を動かす"), true],
   ["select", "select", t("選択 (1)"), true],
   ["draw", "draw", t("音符を描く (2)"), true],
   ["pitch", "pitchpen", t("ピッチのペン (3)"), true],
 ];
+// 手の道具はスマートフォン（指で操作する端末）だけ。パソコンはホイールで動かせる。
+// 指の端末では最初の道具を手にする（1 本指で表示を動かせ、音符はうっかり動かない）
+const touchUi = matchMedia("(pointer: coarse)").matches;
+if (touchUi) pr.tool = "pan";
 const renderTools = (): void => {
   tools.innerHTML = "";
   for (const [tool, icon, title, enabled] of TOOL_DEFS) {
+    if (tool === "pan" && !touchUi) continue;
     const b = document.createElement("button");
     b.className = "icon-btn" + (pr.tool === tool ? " active" : "");
     b.title = title;

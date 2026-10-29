@@ -138,7 +138,7 @@ export class SidePanel {
     const t = this.store.track;
     const audio = isAudioTrack(t);
     if (!audio) {
-      this.section("voice", tx("歌い手と声"), `${this.engine?.singerLabel(t) ?? t.voice} · ${this.store.vocoder === "nsf" && this.engine?.hasVocoder("nsf") ? "NSF-HiFiGAN" : "NHVSing"}`,
+      this.section("voice", tx("歌い手と声"), `${this.engine?.singerLabel(t) ?? t.voice} · ${this.store.vocoder === "nsf" ? "NSF-HiFiGAN" : "NHVSing"}`,
                    (el) => this.renderVoice(el));
       this.section("fx", tx("エフェクター"), this.fxSummary(), (el) => {
         this.fx = new FxPanel(this.store, (title) => {
@@ -227,10 +227,8 @@ export class SidePanel {
       s.changed("project");
     });
     // ボコーダの切り替えは、エンジンが NSF-HiFiGAN も持つときだけ出す（配布版は NHVSing だけ。Python 版で vocoders/ に置けば出る）
-    // 選んだボコーダは消さない（つながる前の描画で NSF が無いと見えても、あとで使えるようになる）。
-    // 使えない間は NHVSing として扱う（render.ts の vocoderKey も同じ）
     const nsfOk = !!this.engine?.connected && this.engine.hasVocoder("nsf");
-    const nsfOn = nsfOk && s.vocoder === "nsf";
+    if (!nsfOk && s.vocoder === "nsf") s.vocoder = "nhv";
     if (nsfOk) {
       const seg = document.createElement("div");
       seg.className = "seg";
@@ -248,9 +246,6 @@ export class SidePanel {
       head.appendChild(seg);
       if (s.vocoder === "nsf") {
         head.insertAdjacentHTML("beforeend", `<p class="hint">${tx("NSF-HiFiGAN は調波・雑音の分岐を持たないため、音量とうなり以外は効きません。")}</p>`);
-        if (matchMedia("(pointer: coarse)").matches) {
-          head.insertAdjacentHTML("beforeend", `<p class="hint warn">${tx("スマートフォンでは NSF-HiFiGAN は重く、1 フレーズに数十秒かかることがあります。")}</p>`);
-        }
       }
     }
     el.appendChild(head);
@@ -260,7 +255,7 @@ export class SidePanel {
     base.innerHTML = `<h3>${tx("声の調整")}<span class="h-note">${tx("ダブルクリックで元に戻す")}</span></h3>`;
     for (const [key, label, min, max, step, fmt, vp] of VOICE_PARAMS) {
       this.refreshers.push(slider(s, base, {
-        label, min, max, step, fmt, def: defaultBase()[key], disabled: vp && nsfOn,
+        label, min, max, step, fmt, def: defaultBase()[key], disabled: vp && s.vocoder === "nsf",
         get: () => t.base[key], set: (v) => { t.base[key] = v; },
       }, (on) => { this.dragging = on; }));
     }

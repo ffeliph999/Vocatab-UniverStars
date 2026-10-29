@@ -254,8 +254,9 @@ async function mxlText(buf: ArrayBuffer): Promise<string> {
 /** ファイル名の拡張子で形式を決めて読む。 */
 export async function parseScoreFile(name: string, buf: ArrayBuffer): Promise<ScoreResult> {
   const ext = name.toLowerCase().replace(/^.*(\.[^.]+)$/, "$1");
+  if (ext === ".ustx") return (await import("./ustx")).parseUstx(new TextDecoder().decode(buf));
   if (ext === ".ust") return parseUst(new Uint8Array(buf));
   if (ext === ".mxl") return parseMusicXml(await mxlText(buf));
   if (ext === ".musicxml" || ext === ".xml") return parseMusicXml(new TextDecoder().decode(buf));
-  throw new Error(tx("読める楽譜は UST と MusicXML（.musicxml・.xml・.mxl）です: {name}", { name }));
+  throw new Error(tx("読める楽譜は UST・USTX と MusicXML（.musicxml・.xml・.mxl）です: {name}", { name }));
 }

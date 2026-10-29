@@ -10,7 +10,8 @@ import { t } from "./i18n";
 import { textOn, trackColor } from "./theme";
 import { KEY_W, RULER_H, type View } from "./view";
 
-export type Tool = "select" | "draw" | "pitch";
+// pan: 表示をつかんで動かす（1 本指でスクロールするためのスマートフォン用の道具。音符には触らない）
+export type Tool = "select" | "draw" | "pitch" | "pan";
 
 const NOTE_ALPHA = "c0"; // 選んでいない音符はトラックの色を少し沈める
 const BAND_H = 14; // トラックの範囲の帯（目盛りのすぐ下）
@@ -50,7 +51,8 @@ type Drag =
   | { kind: "create"; id: number; anchor: number; before: string }
   | { kind: "box"; x0: number; y0: number; x1: number; y1: number; base: Set<number> }
   | { kind: "region"; side: "left" | "right"; before: string }
-  | { kind: "ruler" };
+  | { kind: "ruler" }
+  | { kind: "pan"; lx: number; ly: number };
 
 export class PianoRoll {
   readonly hc: HiDpiCanvas;
@@ -192,6 +194,10 @@ export class PianoRoll {
       this.press(Math.round(this.view.yToPitch(y)));
       return;
     }
+    if (this.tool === "pan") {
+      this.drag = { kind: "pan", lx: x, ly: y };
+      return;
+    }
     if (this.tool === "pitch") {
       const before = s.snapshot();
       const pen = new PenStroke(ensureCurve(s.track.params, "pitchDelta"), 0, 3 / this.view.pxPerTick);
@@ -267,6 +273,11 @@ export class PianoRoll {
     switch (d.kind) {
       case "ruler":
         this.setPlayhead(x);
+        break;
+      case "pan":
+        this.view.scrollBy(-(x - d.lx) / this.view.pxPerTick, (y - d.ly) / this.view.pxPerSemi);
+        d.lx = x;
+        d.ly = y;
         break;
       case "key":
         this.press(Math.round(this.view.yToPitch(y)));
@@ -464,6 +475,11 @@ export class PianoRoll {
     if (y < RULER_H) {
       c.style.cursor = "pointer";
       this.hint(t("クリック・ドラッグ: 再生位置を移動"));
+      return;
+    }
+    if (this.tool === "pan" && x > KEY_W) {
+      c.style.cursor = "grab";
+      this.hint(t("ドラッグ: 表示を動かす"));
       return;
     }
     if (this.tool === "pitch" && x > KEY_W) {
