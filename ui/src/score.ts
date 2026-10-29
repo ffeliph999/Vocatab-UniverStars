@@ -56,7 +56,8 @@ function toTrack(name: string, notes: RawNote[]): ScoreTrack {
 //   「息」「息吸」「息捨」「吸」「ブレス」「br」→ 休符（次の音符にブレスを入れる印）、
 //   仮名でも音素の並びでもない語（「ust by …」のような覚え書き）→ 休符（注意を出す）
 const VCV_PREFIX = /^(?:-|[aiueonAIUEON])\s+(\S+)$/;
-const KANA_SUFFIX = /^(.*[^\x00-\x7f])(?:[A-G]#?\d|[A-Za-z↑↓]{1,3})$/;
+// 仮名の部分は ↑↓ で終わらない（↑↓ は ASCII でないので、外さないと「み↓S」が「み↓」で止まる）
+const KANA_SUFFIX = /^(.*[^\x00-\x7f↑↓])(?:[A-G]#?\d|[A-Za-z↑↓]{1,3})$/;
 const EXTEND_MARKS = new Set(["・", "＼", "\\"]);
 const BREATH_LYRICS = /^(?:息\S*|吸\S*|呼吸|ブレス|br|breath)$/i;
 const kataToHira = (s: string): string => s.replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));

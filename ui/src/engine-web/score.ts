@@ -238,6 +238,53 @@ export interface ScoreToPhrasesOptions {
   splitSilenceSec?: number;
   pauLeadSec?: number;
   pauTrailSec?: number;
+  /** 句の長さの上限（秒）。0 で切らない */
+  maxPhraseSec?: number;
+}
+
+/**
+ * 句の長さの上限（この版だけ。Python のエンジンには無い）。音響モデルとボコーダは句の長さに比例して
+ * メモリを使い（どちらも 1 秒あたり ~8 MB）、WebAssembly のメモリは一度伸びると戻らない。休符の短い楽譜
+ * （息継ぎだけで 1〜2 分歌い続ける UST など）は 1 句が 60〜120 秒になり、スマートフォンではページごと落ちる。
+ */
+export const MAX_PHRASE_SEC = 16;
+
+/**
+ * 長すぎる句を上限以下に切り分ける。切る所は、上限に収まる範囲の後ろ半分にある一番長い隙間（短い休符 = 息継ぎ）。
+ * 隙間が無ければ、収まる一番後ろの音符の境目。切った後ろの句は、その音符の頭から始まる。
+ */
+function splitLong(ph: Phrase, maxSec: number): Phrase[] {
+  const len = (ns: PNote[]) => ns.reduce((s, n) => s + n.dur_sec + n.gap_after_sec, 0);
+  if (maxSec <= 0 || len(ph.notes) <= maxSec) return [ph];
+  const out: Phrase[] = [];
+  let notes = ph.notes;
+  let start = ph.start_sec;
+  while (notes.length > 1 && len(notes) > maxSec) {
+    // 音符 k の後ろで切ったときの前の句の長さ（隙間は含めない: 句の終わりは後ろの pau が受け持つ）
+    let t = 0;
+    let best = -1;
+    let bestGap = 0;
+    let last = 0; // 収まる一番後ろの境目
+    for (let k = 0; k < notes.length - 1; k++) {
+      t += notes[k].dur_sec;
+      if (t > maxSec) break;
+      last = k;
+      if (t >= maxSec / 2 && notes[k].gap_after_sec > bestGap) {
+        best = k;
+        bestGap = notes[k].gap_after_sec;
+      }
+      t += notes[k].gap_after_sec;
+    }
+    const k = best >= 0 ? best : last;
+    const head = notes.slice(0, k + 1).map((n) => ({ ...n }));
+    const offset = len(head);
+    head[k].gap_after_sec = 0.0;
+    out.push({ ...ph, notes: head, start_sec: start });
+    notes = notes.slice(k + 1);
+    start += offset;
+  }
+  out.push({ ...ph, notes, start_sec: start });
+  return out;
 }
 
 /**
@@ -250,6 +297,7 @@ export function scoreToPhrases(vb: VoicebankWeb, score: ScoreNote[], bpm: number
   const split = opts.splitSilenceSec ?? 0.5;
   const lead = opts.pauLeadSec ?? 0.25;
   const trail = opts.pauTrailSec ?? 0.25;
+  const maxSec = opts.maxPhraseSec ?? MAX_PHRASE_SEC;
   score = applyG2p(t, score); // 韓国語など、規則の G2P を持つ言語だけ
   const b2s = 60.0 / bpm;
   const phrases: Phrase[] = [];
@@ -260,7 +308,8 @@ export function scoreToPhrases(vb: VoicebankWeb, score: ScoreNote[], bpm: number
   const flush = () => {
     if (cur.length) {
       cur[cur.length - 1].gap_after_sec = 0.0; // 句の終わりは後ろの pau が受け持つ
-      phrases.push({ notes: cur, leading_pau_sec: lead, trailing_pau_sec: trail, start_sec: phraseStart });
+      phrases.push(...splitLong({ notes: cur, leading_pau_sec: lead, trailing_pau_sec: trail, start_sec: phraseStart },
+                                maxSec));
       cur = [];
     }
   };

@@ -19,6 +19,11 @@ Editor de canto que roda no navegador, com as vozes **Otomi Kazuo** e **Otozora 
 - **USTX do OpenUtau:** **File → Import score** também lê `.ustx` (notas, letras, tempo e faixas; `+` vira
   extensão, `br`/`br2` vira respiração, `か[k a]` usa só "か"). **File → Export USTX** grava as faixas de canto
   num `.ustx` (notas, letras, tempo e compasso; as curvas de pitch e expressões ficam por conta do OpenUtau).
+- **Frases longas no celular:** o VocaTab só corta frases em pausas de 0,5 s ou mais, e um UST que só tem
+  respirações curtas vira frases de 40 s a 2 min. O modelo e o vocoder usam ~8 MB de memória por segundo de frase,
+  cada um, e o celular fecha a página. Aqui uma frase com mais de 16 s é dividida na pausa curta mais longa (ou,
+  sem pausa, entre duas notas).
+- **Letras do UTAU com cor de voz:** `み↓S`, `も↓S` etc. viram `み`, `も` (antes a análise parava com erro em `↓`).
 - A voz do projeto de exemplo, que não existe aqui, é trocada pela primeira voz do voicebank.
 
 ## Publicar no GitHub Pages
