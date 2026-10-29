@@ -15,7 +15,9 @@ models:
 singers:
   - {id: 1, name: Otomi_Kazuo, display: {ja: Otomi Kazuo, en: Otomi Kazuo}}
   - {id: 2, name: Otozora_Rinly, display: {ja: Otozora Rinly, en: Otozora Rinly}}
-default_vocoder: pc_nsf_hifigan_2025_02
+# O site carrega antes só este vocoder (NHVSing, 7 MB). O NSF-HiFiGAN (54 MB) é baixado quando é usado: a interface
+# começa nele no computador e no NHVSing no celular (ui/src/store.ts), onde o NSF é lento.
+default_vocoder: nhvsing_v3_2_1
 publish: true
 credits: >-
   Vozes: Otomi Kazuo (Felipe Souza) e Otozora Rinly (UniverStars), publicadas com a permissão dos dois.

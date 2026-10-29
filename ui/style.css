@@ -358,7 +358,7 @@ label.check.disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* ── スマートフォン（狭い画面）: 左の帯は上に重なる引き出し（最初は閉じる、外を押すと閉じる）、カードは全幅、
    見出しの帯は折り返す、指で押しやすい大きさ。ピアノロールは 2 本指でスクロール・つまんで拡大（pianoroll.ts） ── */
-@media (max-width: 760px) {
+@media (max-width: 760px), (max-height: 500px) {
   #app, #app.side-closed { grid-template-columns: minmax(0, 1fr); height: 100vh; height: 100dvh; }
   #sidebar { position: fixed; z-index: 50; top: 0; bottom: 0; left: 0; width: min(88vw, 340px);
     border-right: 1px solid var(--line); box-shadow: 6px 0 28px rgba(0, 0, 0, 0.5); transition: transform 0.18s ease; }
@@ -392,4 +392,22 @@ label.check.disabled { opacity: 0.45; cursor: not-allowed; }
   #bottom-panels { max-height: 36dvh; overflow-y: auto; }
   #status { padding: 0 10px; }
   .note-pop { width: min(276px, calc(100vw - 16px)); }
+}
+
+/* スマートフォンを横にしたとき（幅はあるが低い）: 見出しの帯は 1 行（はみ出す分は横にスクロール）、
+   トラック一覧は隠し、下のパネルは低めにしてピアノロールの高さを残す */
+@media (max-height: 500px) and (min-width: 761px) {
+  .card-head { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .card-head::-webkit-scrollbar { display: none; }
+  .card-head > * { flex: none; }
+  .card-track { flex: none; max-width: 24vw; }
+  #transport { flex: none; order: 3; }
+  #btn-export { order: 9; }
+  #snap { flex: none; }
+  .icon-btn, .head-transport .icon-btn { width: 36px; height: 32px; }
+  #arr-body, #arr-resizer { display: none; }
+  #bottom-panels { max-height: 30dvh; }
+  #tabbar { padding: 3px 8px; }
+  .tab { height: 28px; }
+  #status { display: none; }
 }

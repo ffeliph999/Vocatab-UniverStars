@@ -248,6 +248,9 @@ export class SidePanel {
       head.appendChild(seg);
       if (s.vocoder === "nsf") {
         head.insertAdjacentHTML("beforeend", `<p class="hint">${tx("NSF-HiFiGAN は調波・雑音の分岐を持たないため、音量とうなり以外は効きません。")}</p>`);
+        if (matchMedia("(pointer: coarse)").matches) {
+          head.insertAdjacentHTML("beforeend", `<p class="hint warn">${tx("スマートフォンでは NSF-HiFiGAN は重く、1 フレーズに数十秒かかることがあります。")}</p>`);
+        }
       }
     }
     el.appendChild(head);

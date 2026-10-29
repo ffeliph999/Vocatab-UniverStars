@@ -9,12 +9,14 @@ Editor de canto que roda no navegador, com as vozes **Otomi Kazuo** e **Otozora 
 - **Vozes:** só Kazuo e Rinly (`voicebanks/kazuo_rinly/`). São modelos ajustados a partir do LeapSinger v2
   (timbre) e do PrettyPitch (pitch e duração das consoantes). O voicebank original de 3 vozes não faz parte deste
   repositório.
-- **Vocoder:** botão **NHVSing v3.2.1 / NSF-HiFiGAN** no painel "Singer & voice". O padrão é o NSF-HiFiGAN
-  (pc-nsf-hifigan 2025.02), que reproduz as consoantes e respirações destas vozes com bem mais fidelidade. Com ele,
-  dos ajustes de voz só Volume e Growl funcionam.
+- **Vocoder:** botão **NHVSing v3.2.1 / NSF-HiFiGAN** no painel "Singer & voice". No computador o padrão é o
+  NSF-HiFiGAN (pc-nsf-hifigan 2025.02), que reproduz as consoantes e respirações destas vozes com bem mais
+  fidelidade. Com ele, dos ajustes de voz só Volume e Growl funcionam. No celular o padrão é o NHVSing: o NSF é
+  ~2,6× mais pesado numa thread só (como o navegador roda aqui) e só é baixado (54 MB) quando você o escolhe.
 - **Smartphone:** o painel lateral vira uma gaveta (botão no canto superior esquerdo; toque fora para fechar), a
-  barra de ferramentas quebra em linhas e os botões ficam maiores. No piano roll, dois dedos rolam a partitura e
-  pinçar dá zoom; tocar duas vezes numa nota edita a letra.
+  barra de ferramentas quebra em linhas e os botões ficam maiores. Com o celular deitado, o cabeçalho fica numa
+  linha (arraste para o lado para ver o resto) e a lista de faixas some para sobrar altura. No piano roll, dois
+  dedos rolam a partitura e pinçar dá zoom; tocar duas vezes numa nota edita a letra.
 - A voz do projeto de exemplo, que não existe aqui, é trocada pela primeira voz do voicebank.
 
 ## Publicar no GitHub Pages

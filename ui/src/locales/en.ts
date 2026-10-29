@@ -279,6 +279,7 @@ export const en: Record<string, string> = {
   "{sec} 秒からのフレーズに不正な値が {n} 個ありました（無音に置き換えて再生します）": "The phrase at {sec} s had {n} invalid samples (played as silence)",
   "ボコーダ": "Vocoder",
   "NSF-HiFiGAN は調波・雑音の分岐を持たないため、音量とうなり以外は効きません。": "NSF-HiFiGAN has no harmonic/noise branches, so only Volume and Growl take effect.",
+  "スマートフォンでは NSF-HiFiGAN は重く、1 フレーズに数十秒かかることがあります。": "On phones NSF-HiFiGAN is heavy: a phrase can take tens of seconds to render.",
   "声の調整": "Voice",
   "ダブルクリックで元に戻す": "Double-click to reset",
   "解析完了": "Analyzed",

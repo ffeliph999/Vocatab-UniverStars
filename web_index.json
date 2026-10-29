@@ -22,7 +22,7 @@
      }
     }
    ],
-   "default_vocoder": "pc_nsf_hifigan_2025_02",
+   "default_vocoder": "nhvsing_v3_2_1",
    "credits": "Vozes: Otomi Kazuo (Felipe Souza) e Otozora Rinly (UniverStars), publicadas com a permissão dos dois. Modelos ajustados a partir do LeapSinger v2 e do PrettyPitch (wavtechyukky), cujos modelos base foram treinados com Oniku Kurumi, Natsume Yuuri e Namine Ritsu (veja CREDITS.txt e 夏目悠李_利用規約.txt). Uso pessoal e não comercial.",
    "web": "voicebanks/kazuo_rinly/web.json",
    "bytes": {
