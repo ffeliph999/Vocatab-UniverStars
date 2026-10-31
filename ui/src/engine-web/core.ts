@@ -178,9 +178,10 @@ export interface CacheLimits {
  * モデルごとの計算の場所。GPU（WebGPU）が使えるときだけ、精度が CPU と変わらず速くなるものを GPU で動かす
  * （research/experiment/web_ort_bench の計測。7.8 秒の句で、F0 は 364 → 60 ms、NSF-HiFiGAN は 8.4 → 1.2 秒、
  * 出力の差は CPU のときと同じ程度）。音響モデルは GPU だと出力のずれが CPU の約 9 倍（mel の平均 0.01）になり、
- * NHVSing は GPU のほうが遅いので、どちらも CPU（WASM）で動かす
+ * NHVSing は GPU のほうが遅いので、どちらも CPU（WASM）で動かす。
+ * F0 も CPU のまま: スマートフォンの GPU ではピッチが平らになる報告があり、CPU でも十分に速い
  */
-const GPU_MODELS = new Set(["f0", "nsf_hifigan"]);
+const GPU_MODELS = new Set(["nsf_hifigan"]);
 
 /** ボコーダの取り置き 1 つのバイト数 */
 const vocBytes = (vo: VocOut): number =>
