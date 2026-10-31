@@ -225,6 +225,7 @@ export class BottomPanels {
       startY = e.clientY;
       startH = el.getBoundingClientRect().height;
       handle.classList.add("dragging");
+      this.container.style.maxHeight = "calc(100dvh - 300px)"; // 自分で広げるときは、既定の上限を超えてよい
     });
     handle.addEventListener("pointermove", (e) => {
       if (!handle.classList.contains("dragging")) return;
