@@ -220,6 +220,17 @@ label.check.disabled { opacity: 0.45; cursor: not-allowed; }
 .card-track { display: flex; align-items: center; gap: 8px; margin-right: 6px; white-space: nowrap; }
 .card-track b { font-size: 13px; }
 .card-track .muted { font-size: 11.5px; }
+/* 合成の進み具合: 見出しのすぐ下。句の計算に時間がかかっても止まって見えないよう、帯は動かし続ける */
+#render-bar { display: flex; align-items: center; gap: 8px; flex: none; height: 18px; padding: 0 14px; border-bottom: 1px solid var(--line); font-size: 10.5px; color: var(--muted); }
+#render-bar[hidden] { display: none; }
+#render-bar.error { color: var(--warn); }
+#render-bar.error .rb-track { display: none; }
+.rb-track { position: relative; flex: 1 1 0; min-width: 40px; height: 2px; border-radius: 1px; overflow: hidden; background: var(--accent-soft); }
+.rb-fill { height: 100%; width: 0; background: var(--accent); transition: width 0.3s ease; }
+.rb-track::after { content: ""; position: absolute; inset: 0; width: 25%; background: linear-gradient(90deg, transparent, var(--accent), transparent); animation: rb-slide 2s linear infinite; }
+@keyframes rb-slide { from { transform: translateX(-100%); } to { transform: translateX(400%); } }
+@media (prefers-reduced-motion: reduce) { .rb-track::after { animation: none; display: none; } .rb-fill { transition: none; } }
+.rb-text { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
 #arr-body { position: relative; flex: none; height: 76px; overflow: hidden; border-bottom: 1px solid var(--line); }
 #arr-body.folded, #pr-wrap.folded { display: none; }
 #arr-canvas { display: block; width: 100%; height: 100%; }

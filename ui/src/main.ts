@@ -149,6 +149,43 @@ updateTime();
 const engineState = document.querySelector<HTMLElement>(".engine-state")!;
 const debug = new URLSearchParams(location.search).get("debug") === "1";
 let engineHooked = false;
+// 合成の進み具合の帯。短い編集で点滅しないよう、少し続いてから出す
+// 画面の HTML が古いキャッシュのままでも動くよう、帯はここで作る
+const renderBar = document.createElement("div");
+renderBar.id = "render-bar";
+renderBar.setAttribute("role", "progressbar");
+renderBar.setAttribute("aria-valuemin", "0");
+renderBar.setAttribute("aria-valuemax", "100");
+renderBar.hidden = true;
+renderBar.innerHTML = `<div class="rb-track"><div class="rb-fill"></div></div><span class="rb-text"></span>`;
+document.querySelector(".card-head")!.after(renderBar);
+const rbFill = renderBar.querySelector<HTMLElement>(".rb-fill")!;
+const rbText = renderBar.querySelector<HTMLElement>(".rb-text")!;
+const RB_SHOW_MS = 400;
+let rbStart = 0;
+let rbTimer = 0;
+let rbLabel = "";
+function drawRenderBar(active: boolean, percent: number): void {
+  if (!active) {
+    rbStart = 0;
+    clearInterval(rbTimer);
+    rbTimer = 0;
+    renderBar.hidden = true;
+    return;
+  }
+  if (!rbStart) rbStart = performance.now();
+  if (!rbTimer) rbTimer = window.setInterval(onEngineTick, 500); // 句の途中でも経過時間を進める
+  const ms = performance.now() - rbStart;
+  renderBar.hidden = ms < RB_SHOW_MS;
+  renderBar.classList.remove("error");
+  renderBar.setAttribute("aria-valuenow", String(percent));
+  rbFill.style.width = `${percent}%`;
+  rbText.textContent = `${percent}% · ${rbLabel} · ${Math.floor(ms / 1000)} s`;
+}
+let rbPercent = 0;
+function onEngineTick(): void {
+  drawRenderBar(!!rbStart, rbPercent);
+}
 function onEngineUpdate(): void {
   if (renderer.connected && !engineHooked) {
     engineHooked = true;
@@ -182,6 +219,16 @@ function onEngineUpdate(): void {
       : renderer.engine.sleeping ? t("レンダリング完了（待機中）") : t("レンダリング完了");
     engineState.textContent = renderer.error || loading || `${renderer.voicebank.name}　${idle}`;
     engineState.classList.toggle("error", !!renderer.error);
+    const frames = all.reduce((n, p) => n + p.nFrames, 0);
+    const doneFrames = all.reduce((n, p) => n + (p.status === "済み" ? p.nFrames : 0), 0);
+    rbPercent = pg ? Math.floor((100 * pg.loaded) / Math.max(1, pg.total)) : Math.floor((100 * doneFrames) / Math.max(1, frames));
+    rbLabel = loading || `${store.vocoder === "nsf" ? "NSF" : "NHVSing"} · ${idle}`;
+    drawRenderBar(!renderer.error && (!!pg || done < all.length), rbPercent);
+    if (renderer.error) {
+      renderBar.hidden = false;
+      renderBar.classList.add("error");
+      rbText.textContent = renderer.error;
+    }
   }
   mel.schedule();
   side.update();

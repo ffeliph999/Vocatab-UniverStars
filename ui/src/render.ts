@@ -98,6 +98,7 @@ export class Renderer {
   slotsFor: (track: Track) => BreathSlot[] = () => [];
   readonly engine: EngineClient = makeEngine();
   private busy = false;
+  private lastVoc = ""; // 最後に合成を始めたボコーダ（替えたら、前の音が残っていても句は「未済」に戻す）
   private timer = 0;
   private breathIndex = new Map<string, BreathClipInfo[]>(); // ボイスバンク → ブレスの束の一覧（届いたもの）
   private breathIndexPending = new Set<string>();
@@ -299,6 +300,7 @@ export class Renderer {
     this.busy = true;
     const ver = this.store.version;
     const p = this.store.project;
+    let voc = "";
     try {
       // 1. 解析（速い。中身が同じ句はエンジン側で取っておいたものを返す）
       for (const track of p.tracks) {
@@ -339,10 +341,18 @@ export class Renderer {
         this.onUpdate();
       }
       // 2. 合成（最後の F0・歌い手・ボコーダが変わった句だけ）
-      const voc = this.vocoderKey();
+      voc = this.vocoderKey();
+      if (voc !== this.lastVoc) {
+        this.lastVoc = voc;
+        for (const track of p.tracks) {
+          for (const ph of this.phrases(track)) if (ph.status === "済み") ph.status = "解析済み";
+        }
+        this.onUpdate();
+      }
       for (const track of p.tracks) {
         for (const ph of this.phrases(track)) {
-          if (this.store.version !== ver) return; // 編集が入った: 最初からやり直す（finally で予約）
+          // 編集が入った、またはボコーダを替えた: 最初からやり直す（finally で予約）
+          if (this.store.version !== ver || this.vocoderKey() !== voc) return;
           const singer = this.singerId(track);
           const { log2 } = composeF0(ph, track, p);
           const params = phraseParams(ph, track, p);
@@ -358,7 +368,10 @@ export class Renderer {
           }
           const h = hashF32(log2, `${voc}|${singer}|${ps}|${JSON.stringify(retakeMel)}`);
           // ②・③ の行をオンにしたばかりで mel が無い句は、同じ音でも頼み直す（エンジンの取り置きに当たるので速い）
-          if (ph.f0Hash === h && ph.wav && (!plain || ph.melPlain) && (!out || ph.melOut)) continue;
+          if (ph.f0Hash === h && ph.wav && (!plain || ph.melPlain) && (!out || ph.melOut)) {
+            ph.status = "済み";
+            continue;
+          }
           ph.status = "合成中";
           this.onUpdate();
           let j;
@@ -393,7 +406,7 @@ export class Renderer {
       this.onUpdate();
     } finally {
       this.busy = false;
-      if (this.store.version !== ver) this.schedule(50);
+      if (this.store.version !== ver || (voc && this.vocoderKey() !== voc)) this.schedule(50);
       else this.onUpdate(); // 全部済んだことを知らせる（書き出しのボタンなど）
     }
   }
