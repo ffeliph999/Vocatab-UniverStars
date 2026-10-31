@@ -183,7 +183,7 @@ export function openSettingsDialog(onLang: (l: Lang) => void = () => undefined):
     for (const b of body.querySelectorAll<HTMLButtonElement>(".melmap")) {
       b.addEventListener("click", () => { setMelMap(b.dataset.k as MelMapKey); render(); });
     }
-    // GPU（WebGPU）は既定でオフ。Safari では WebGPU 入りの計算の部品を読むだけで読み込み直しが起きるので、Chrome 向けの実験的な設定
+    // GPU（WebGPU）は既定でオン。Safari では WebGPU 入りの計算の部品を読むだけで読み込み直しが起きるので使わない（下の gpuUnavailable）
     const gpu = body.querySelector<HTMLInputElement>("#gpu-on")!;
     gpu.checked = getGpu();
     gpu.addEventListener("change", () => setGpu(gpu.checked));

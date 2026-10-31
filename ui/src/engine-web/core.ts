@@ -323,6 +323,20 @@ export class Engine {
     return r;
   }
 
+  /** GPU のセッションで計算に失敗したら（GPU のメモリ不足など）、以後は CPU にして 1 度だけやり直す */
+  private async runFallback(key: string, kind: string, open: () => Promise<any>, feeds: Feeds, names?: string[]): Promise<Record<string, Float32Array>> {
+    const onGpu = this.device(kind) === "webgpu";
+    try {
+      return await this.run(await open(), feeds, names);
+    } catch (e) {
+      if (!onGpu) throw e;
+      console.warn(`GPU で計算できなかったので CPU に切り替える（${kind}）`, e);
+      this.gpu = false;
+      this.sessions.delete(key);
+      return this.run(await open(), feeds, names);
+    }
+  }
+
   // ── 解析（engine/server.py の analyze と PrettyPitchLeapSinger.analyze） ──
   async analyze(r: AnalyzeReq): Promise<AnalyzeResp> {
     const vb = this.vbs.get(r.voicebank);
@@ -377,7 +391,7 @@ export class Engine {
         applyRetakes(noise, frameNoteIndex(dur.noteIndex, fp.phDurs, fp.T), f0Rt, 3);
       }
     }
-    const o = await this.run(await this.session(vb.key, "f0"), f0Feeds(vb, fp, spk, noise), ["plain", "vibrato", "vuv"]);
+    const o = await this.runFallback(`${vb.key}/f0`, "f0", () => this.session(vb.key, "f0"), f0Feeds(vb, fp, spk, noise), ["plain", "vibrato", "vuv"]);
     const f = finishF0(vb, fp, { plain: o.plain, vibrato: o.vibrato, vuv: o.vuv });
     return { phonemes: dur.seq.phonemes, phDurs: alignDurs(dur.phDurs, f.T), startSec: dur.startSec,
              plainLog2: f.plainLog2, vibLog2: f.vibLog2, uv: f.uv, baseLog2: f.baseLog2,
@@ -457,7 +471,7 @@ export class Engine {
         vo = { harmonic: o.harmonic, noise_out: o.noise_out,
                env_h: o.env_h ? toFloat16Bits(o.env_h) : undefined, env_n: o.env_n ? toFloat16Bits(o.env_n) : undefined };
       } else {
-        vo = { waveform: (await this.run(sess, nsfFeeds(ac.melIn, T, ac.f0), ["waveform"])).waveform };
+        vo = { waveform: (await this.runFallback(`voc/${voc.key}`, voc.kind, () => this.vocoderSession(voc), nsfFeeds(ac.melIn, T, ac.f0), ["waveform"])).waveform };
       }
       this.vocCache.put(vocKey, vo, vocBytes(vo), r.key);
     }

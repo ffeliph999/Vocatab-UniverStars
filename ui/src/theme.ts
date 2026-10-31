@@ -22,13 +22,15 @@ export const MEL_MAPS: Record<MelMapKey, { label: string; stops: string[] }> = {
 interface Settings {
   accent: string;
   melMap: MelMapKey;
-  /** エンジンの計算に GPU（WebGPU）を使うか。既定はオフ（Safari では WebGPU 入りの部品を読むだけで読み込み直しが起きる。
+  /** エンジンの計算に GPU（WebGPU）を使うか。既定はオン（使えない環境と Safari では worker.ts が CPU にする。
    *  Chrome では F0 と NSF-HiFiGAN が速くなる）。変えたら画面の読み込み直しで効く */
   gpu: boolean;
+  /** 使う人が GPU の設定を自分で変えたか（既定がオフだった頃に一緒に保存された false を、選んだものとして扱わない） */
+  gpuChosen?: boolean;
 }
 
 const KEY = "svs-editor-settings";
-let settings: Settings = { accent: DEFAULT_ACCENT, melMap: "fuji", gpu: false };
+let settings: Settings = { accent: DEFAULT_ACCENT, melMap: "fuji", gpu: true };
 const listeners: Array<() => void> = [];
 
 export function loadSettings(): void {
@@ -36,7 +38,10 @@ export function loadSettings(): void {
     const s = JSON.parse(localStorage.getItem(KEY) ?? "{}") as Partial<Settings>;
     if (s.accent && /^#[0-9a-f]{6}$/i.test(s.accent)) settings.accent = s.accent.toLowerCase();
     if (s.melMap && s.melMap in MEL_MAPS) settings.melMap = s.melMap;
-    if (typeof s.gpu === "boolean") settings.gpu = s.gpu;
+    if (s.gpuChosen && typeof s.gpu === "boolean") {
+      settings.gpu = s.gpu;
+      settings.gpuChosen = true;
+    }
   } catch {
     // 読めなければ既定のまま
   }
@@ -58,6 +63,7 @@ export const getGpu = (): boolean => settings.gpu;
 /** GPU を使うか（次に画面を読み込み直したときから効く。URL の ?gpu=1・?gpu=0 はこれより優先） */
 export function setGpu(on: boolean, persist = true): void {
   settings.gpu = on;
+  settings.gpuChosen = true;
   if (persist) save();
 }
 

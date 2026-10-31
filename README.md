@@ -10,7 +10,7 @@ Editor de canto que roda no navegador, com as vozes **Otomi Kazuo** e **Otozora 
   (timbre) e do PrettyPitch (pitch e duração das consoantes). O voicebank original de 3 vozes não faz parte deste
   repositório.
 - **Vocoder:** NHVSing v3.3 (o VocaTab usa o v3.2.1). No painel **Singer & voice**, a opção **NSF-HiFiGAN** tem o som mais limpo
-  com estas vozes, mas renderiza bem mais devagar (no CPU, ~3 s por segundo de áudio) e só aceita os ajustes de volume e rouquidão.
+  com estas vozes, mas renderiza bem mais devagar (com GPU é bem mais rápido, se o navegador tiver WebGPU; no CPU, ~3 s por segundo de áudio) e só aceita os ajustes de volume e rouquidão.
 - **Smartphone:** o painel lateral vira uma gaveta (botão no canto superior esquerdo; toque fora para fechar), a
   barra de ferramentas quebra em linhas e os botões ficam maiores. Com o celular deitado, o cabeçalho fica numa
   linha (arraste para o lado para ver o resto) e a lista de faixas some para sobrar altura. No piano roll, a
