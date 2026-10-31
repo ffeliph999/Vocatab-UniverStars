@@ -26,7 +26,7 @@ t0 = time.time()
 an = eng.analyze(phrases[0][0], 2, seed=0)
 t1 = time.time()
 f0 = 2.0 ** (an.plain_log2 + an.vib_log2)
-o = eng.synthesize(an, f0, 2, vocs["nhvsing_v3_2_1"])
+o = eng.synthesize(an, f0, 2, vocs["nhvsing_v3_3"])
 t2 = time.time()
 T = int(an.ph_durs.sum())
 print(f"{sec:.0f} 秒（{len(phrases)} 句、{T} フレーム）: 解析 {t1 - t0:.2f} 秒・合成 {t2 - t1:.2f} 秒、"

@@ -7,7 +7,7 @@ repository, carry these notices with it.
 | What | Where | Terms |
 |---|---|---|
 | Trained models and voicebank (acoustic, F0, consonant duration, breath bank) | `voicebanks/leapsinger_ja_3singer/` | personal, non-commercial, **no redistribution** — each singing database's terms (see §1) |
-| NHVSing vocoder | `vocoders/nhvsing_v3_2_1/vocoder.onnx` | NHVSing project; weights are non-commercial (see §2) |
+| NHVSing vocoder | `vocoders/nhvsing_v3_3/vocoder.onnx` | NHVSing project; weights are non-commercial (see §2) |
 | Growl effect | `engine/voiceparams.py` `growl()`, `ui/src/engine-web/voiceparams.ts` | follows hifisampler `util/growl.py`, Apache-2.0 (see §3) |
 | onnxruntime-web 1.20.1 | loaded at run time from jsDelivr, **not** in this repo | MIT, Microsoft (see §4) |
 | esbuild | used at build time only (`tools/build.py`), **not** in this repo | MIT |
@@ -38,7 +38,7 @@ The model code itself is ours and MIT:
 [LeapSinger](https://github.com/wavtechyukky/LeapSinger) (acoustic model),
 [PrettyPitch](https://github.com/wavtechyukky/PrettyPitch) (F0 and consonant duration).
 
-## 2. NHVSing vocoder (`vocoders/nhvsing_v3_2_1/vocoder.onnx`)
+## 2. NHVSing vocoder (`vocoders/nhvsing_v3_3/vocoder.onnx`, `vocoders/nhvsing_vozes_v33/vocoder.onnx`)
 
 A built artifact of the [NHVSing](https://github.com/wavtechyukky/NHVSing/) project (also ours,
 MIT code). Its distributed weights are **non-commercial** and governed by the terms of the data

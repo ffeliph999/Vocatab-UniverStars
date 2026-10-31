@@ -15,7 +15,7 @@ models:
 singers:
   - {id: 1, name: Otomi_Kazuo, display: {ja: Otomi Kazuo, en: Otomi Kazuo}}
   - {id: 2, name: Otozora_Rinly, display: {ja: Otozora Rinly, en: Otozora Rinly}}
-default_vocoder: nhvsing_v3_2_1
+default_vocoder: nhvsing_v3_3
 publish: true
 credits: >-
   Vozes: Otomi Kazuo (Felipe Souza) e Otozora Rinly (UniverStars), publicadas com a permissão dos dois.

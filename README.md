@@ -9,7 +9,8 @@ Editor de canto que roda no navegador, com as vozes **Otomi Kazuo** e **Otozora 
 - **Vozes:** só Kazuo e Rinly (`voicebanks/kazuo_rinly/`). São modelos ajustados a partir do LeapSinger v2
   (timbre) e do PrettyPitch (pitch e duração das consoantes). O voicebank original de 3 vozes não faz parte deste
   repositório.
-- **Vocoder:** o mesmo do VocaTab, NHVSing v3.2.1.
+- **Vocoder:** NHVSing v3.3 (o VocaTab usa o v3.2.1). No painel **Voz**, a opção **Kazuo & Rinly (teste)** troca para um
+  NHVSing ajustado a estas duas vozes, ainda em avaliação.
 - **Smartphone:** o painel lateral vira uma gaveta (botão no canto superior esquerdo; toque fora para fechar), a
   barra de ferramentas quebra em linhas e os botões ficam maiores. Com o celular deitado, o cabeçalho fica numa
   linha (arraste para o lado para ver o resto) e a lista de faixas some para sobrar altura. No piano roll, a
@@ -49,8 +50,9 @@ e envie o `web_index.json` e o `web.json` novos.
   cujos modelos base foram treinados com os bancos de voz Oniku Kurumi, Natsume Yuuri e Namine Ritsu. **Uso pessoal
   e não comercial.** Os créditos dos bancos de voz estão em `CREDITS.txt`, e os termos da Natsume Yuuri, em
   `夏目悠李_利用規約.txt`. Ao publicar áudio feito aqui, credite a voz usada.
-- **NHVSing v3.2.1** (`vocoders/nhvsing_v3_2_1/`): pesos do [NHVSing](https://github.com/wavtechyukky/NHVSing)
+- **NHVSing v3.3** (`vocoders/nhvsing_v3_3/`): pesos do [NHVSing](https://github.com/wavtechyukky/NHVSing)
   (código MIT; os pesos são de uso não comercial), exportados para o formato do VocaTab a partir dos pesos publicados.
+- **NHVSing Kazuo & Rinly** (`vocoders/nhvsing_vozes_v33/`): os mesmos pesos ajustados a estas duas vozes. **Uso pessoal e não comercial.**
 - **js-yaml** (`ui/src/vendor/js-yaml.mjs`, para ler e gravar `.ustx`): [nodeca/js-yaml](https://github.com/nodeca/js-yaml), MIT.
 
 A documentação original do VocaTab está em `README.vocatab.md` (japonês) e `README.vocatab.en.md` (inglês).

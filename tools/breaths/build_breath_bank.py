@@ -105,7 +105,7 @@ def main() -> None:
     if a.preview:
         from check_copysynth import vocode_mel
         import onnxruntime as ort
-        sess = ort.InferenceSession(str(ROOT / "vocoders" / "nhvsing_v3_2_1" / "vocoder.onnx"), providers=["CPUExecutionProvider"])
+        sess = ort.InferenceSession(str(ROOT / "vocoders" / "nhvsing_v3_3" / "vocoder.onnx"), providers=["CPUExecutionProvider"])
         out = Path(a.preview)
         out.mkdir(parents=True, exist_ok=True)
         for c, mel in zip(clips, blobs):

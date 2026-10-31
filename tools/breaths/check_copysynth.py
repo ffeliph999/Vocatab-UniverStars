@@ -43,7 +43,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("wavs", nargs="+")
     ap.add_argument("--out", required=True)
-    ap.add_argument("--vocoder", default=str(ROOT / "vocoders" / "nhvsing_v3_2_1" / "vocoder.onnx"))
+    ap.add_argument("--vocoder", default=str(ROOT / "vocoders" / "nhvsing_v3_3" / "vocoder.onnx"))
     a = ap.parse_args()
     import onnxruntime as ort
     so = ort.SessionOptions()

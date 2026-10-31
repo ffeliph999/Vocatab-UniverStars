@@ -1,0 +1,7 @@
+# NHVSing V3.3 ajustado às vozes Kazuo e Rinly (150 épocas, a partir dos pesos publicados). Opção de teste, não é o padrão.
+# Código MIT; pesos de uso não comercial, veja o README do NHVSing. Mesmas entradas e saídas do nhvsing_v3_3.
+name: NHVSing Kazuo & Rinly (teste)
+kind: nhvsing
+onnx: vocoder.onnx
+grid: {sample_rate: 44100, hop: 256}
+voice_params: true

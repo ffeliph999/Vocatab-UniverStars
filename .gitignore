@@ -7,7 +7,8 @@ __pycache__/
 voicebanks/*
 !voicebanks/kazuo_rinly/
 vocoders/*
-!vocoders/nhvsing_v3_2_1/
+!vocoders/nhvsing_v3_3/
+!vocoders/nhvsing_vozes_v33/
 
 # プロジェクトと楽譜（歌詞・旋律は著作物のことが多いので入れない）
 svs_data/
