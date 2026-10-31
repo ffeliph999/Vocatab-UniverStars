@@ -1,0 +1,10 @@
+# pc-nsf-hifigan 44.1k hop512 128bin 2025.02 (OpenVPI), copiado de OpenUtau\Dependencies\nsf_hifigan.
+# Entradas mel [1,T,128] (ln-mel, 40-16000 Hz, slaney) e f0 [1,T] (Hz) no hop 512; o motor converte o hop 256 do
+# LeapSinger para 512 (engine/pipeline.py, _vocode). Sem os ramos harmônico/ruído: dos ajustes de voz, só volume e
+# rouquidão funcionam. Uso pessoal e não comercial (licença do pc-nsf-hifigan da OpenVPI).
+name: pc-nsf-hifigan 2025.02
+kind: nsf_hifigan
+onnx: vocoder.onnx
+grid: {sample_rate: 44100, hop: 512}
+voice_params: false
+publish: true

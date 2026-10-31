@@ -38,7 +38,7 @@ The model code itself is ours and MIT:
 [LeapSinger](https://github.com/wavtechyukky/LeapSinger) (acoustic model),
 [PrettyPitch](https://github.com/wavtechyukky/PrettyPitch) (F0 and consonant duration).
 
-## 2. NHVSing vocoder (`vocoders/nhvsing_v3_3/vocoder.onnx`, `vocoders/nhvsing_vozes_v33/vocoder.onnx`)
+## 2. NHVSing vocoder (`vocoders/nhvsing_v3_3/vocoder.onnx`)
 
 A built artifact of the [NHVSing](https://github.com/wavtechyukky/NHVSing/) project (also ours,
 MIT code). Its distributed weights are **non-commercial** and governed by the terms of the data
@@ -46,6 +46,12 @@ they were trained on. The vocoder follows
 
 > **Neural Homomorphic Vocoder** — Zhijun Liu, Kuan Chen, Kai Yu, Interspeech 2020
 > <https://www.isca-archive.org/interspeech_2020/liu20_interspeech.html>
+
+## 2b. pc-nsf-hifigan vocoder (`vocoders/pc_nsf_hifigan_2025_02/vocoder.onnx`)
+
+Provided by the [OpenVPI Team](https://github.com/openvpi/) under
+[CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/); weights unchanged. Full notice and acknowledgements:
+`vocoders/pc_nsf_hifigan_2025_02/NOTICE.txt`. Official releases: <https://openvpi.github.io/vocoders/>.
 
 ## 3. Growl effect (Apache-2.0)
 

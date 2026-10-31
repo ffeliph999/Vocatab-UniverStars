@@ -138,7 +138,7 @@ export class SidePanel {
     const t = this.store.track;
     const audio = isAudioTrack(t);
     if (!audio) {
-      this.section("voice", tx("歌い手と声"), `${this.engine?.singerLabel(t) ?? t.voice} · ${this.store.vocoder === "nsf" ? "NSF-HiFiGAN" : this.store.vocoder === "vozes" ? "NHVSing (teste)" : "NHVSing"}`,
+      this.section("voice", tx("歌い手と声"), `${this.engine?.singerLabel(t) ?? t.voice} · ${this.store.vocoder === "nsf" ? "NSF-HiFiGAN" : "NHVSing"}`,
                    (el) => this.renderVoice(el));
       this.section("fx", tx("エフェクター"), this.fxSummary(), (el) => {
         this.fx = new FxPanel(this.store, (title) => {
@@ -228,17 +228,12 @@ export class SidePanel {
     });
     // ボコーダの切り替えは、エンジンが NSF-HiFiGAN も持つときだけ出す（配布版は NHVSing だけ。Python 版で vocoders/ に置けば出る）
     const nsfOk = !!this.engine?.connected && this.engine.hasVocoder("nsf");
-    if (!nsfOk && s.vocoder === "nsf") s.vocoder = "nhv";
-    const vozesOk = !!this.engine?.connected && this.engine.hasVocoder("vozes");
-    if (this.engine?.connected && !vozesOk && s.vocoder === "vozes") s.vocoder = "nhv"; // antes de conectar, ainda não se sabe
-    if (nsfOk || vozesOk) {
+    if (this.engine?.connected && !nsfOk && s.vocoder === "nsf") s.vocoder = "nhv";
+    if (nsfOk) {
       const seg = document.createElement("div");
       seg.className = "seg";
       seg.title = tx("ボコーダ");
-      const options: Array<["nhv" | "nsf" | "vozes", string]> = [["nhv", "NHVSing v3.3"]];
-      if (vozesOk) options.push(["vozes", "Kazuo & Rinly (teste)"]);
-      if (nsfOk) options.push(["nsf", "NSF-HiFiGAN"]);
-      for (const [key, label] of options) {
+      for (const [key, label] of [["nhv", "NHVSing v3.3"], ["nsf", "NSF-HiFiGAN"]] as const) {
         const b = document.createElement("button");
         b.textContent = label;
         b.className = s.vocoder === key ? "on" : "";

@@ -84,9 +84,6 @@ function scrubWav(w: Float32Array): number {
   return n;
 }
 
-/** Opção de teste: o NHVSing ajustado às vozes deste repositório (o padrão continua sendo o publicado). */
-const VOZES_VOCODER = "nhvsing_vozes_v33";
-
 export class Renderer {
   info: EngineInfo | null = null;
   /** トラックの id → 句の列（最新の解析） */
@@ -168,16 +165,11 @@ export class Renderer {
   /** 選んでいるボコーダの鍵（NSF-HiFiGAN が無ければ NHVSing を使う）。 */
   vocoderKey(): string {
     const vocs = this.info?.vocoders ?? [];
-    if (this.store.vocoder === "vozes") {
-      const test = vocs.find((v) => v.key === VOZES_VOCODER);
-      if (test) return test.key;
-    }
     const want = this.store.vocoder === "nsf" ? "nsf" : "nhvsing";
     return (vocs.find((v) => v.kind.includes(want)) ?? vocs[0])?.key ?? "";
   }
 
-  hasVocoder(kind: "nhv" | "nsf" | "vozes"): boolean {
-    if (kind === "vozes") return (this.info?.vocoders ?? []).some((v) => v.key === VOZES_VOCODER);
+  hasVocoder(kind: "nhv" | "nsf"): boolean {
     return (this.info?.vocoders ?? []).some((v) => v.kind.includes(kind === "nsf" ? "nsf" : "nhvsing"));
   }
 

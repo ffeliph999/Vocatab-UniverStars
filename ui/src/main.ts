@@ -428,8 +428,8 @@ window.addEventListener("keydown", (e) => {
 
 // ── 見本の状態（画面の確認用。?select=3&vocoder=nsf&tab=voice のように使う）────
 const q = new URLSearchParams(location.search);
-if (q.get("vocoder") === "nsf" || q.get("vocoder") === "vozes") {
-  store.vocoder = q.get("vocoder") as "nsf" | "vozes";
+if (q.get("vocoder") === "nsf") {
+  store.vocoder = "nsf";
   store.changed("settings");
 }
 const sel = q.get("select");

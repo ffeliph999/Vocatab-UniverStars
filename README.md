@@ -9,8 +9,8 @@ Editor de canto que roda no navegador, com as vozes **Otomi Kazuo** e **Otozora 
 - **Vozes:** só Kazuo e Rinly (`voicebanks/kazuo_rinly/`). São modelos ajustados a partir do LeapSinger v2
   (timbre) e do PrettyPitch (pitch e duração das consoantes). O voicebank original de 3 vozes não faz parte deste
   repositório.
-- **Vocoder:** NHVSing v3.3 (o VocaTab usa o v3.2.1). No painel **Voz**, a opção **Kazuo & Rinly (teste)** troca para um
-  NHVSing ajustado a estas duas vozes, ainda em avaliação.
+- **Vocoder:** NHVSing v3.3 (o VocaTab usa o v3.2.1). No painel **Singer & voice**, a opção **NSF-HiFiGAN** tem o som mais limpo
+  com estas vozes, mas renderiza bem mais devagar (no CPU, ~3 s por segundo de áudio) e só aceita os ajustes de volume e rouquidão.
 - **Smartphone:** o painel lateral vira uma gaveta (botão no canto superior esquerdo; toque fora para fechar), a
   barra de ferramentas quebra em linhas e os botões ficam maiores. Com o celular deitado, o cabeçalho fica numa
   linha (arraste para o lado para ver o resto) e a lista de faixas some para sobrar altura. No piano roll, a
@@ -52,7 +52,7 @@ e envie o `web_index.json` e o `web.json` novos.
   `夏目悠李_利用規約.txt`. Ao publicar áudio feito aqui, credite a voz usada.
 - **NHVSing v3.3** (`vocoders/nhvsing_v3_3/`): pesos do [NHVSing](https://github.com/wavtechyukky/NHVSing)
   (código MIT; os pesos são de uso não comercial), exportados para o formato do VocaTab a partir dos pesos publicados.
-- **NHVSing Kazuo & Rinly** (`vocoders/nhvsing_vozes_v33/`): os mesmos pesos ajustados a estas duas vozes. **Uso pessoal e não comercial.**
+- **pc-nsf-hifigan 2025.02** (`vocoders/pc_nsf_hifigan_2025_02/`): do [DiffSinger Community Vocoder Project](https://openvpi.github.io/vocoders/), da equipe OpenVPI, sob [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/), sem alterações nos pesos. Créditos em `NOTICE.txt`.
 - **js-yaml** (`ui/src/vendor/js-yaml.mjs`, para ler e gravar `.ustx`): [nodeca/js-yaml](https://github.com/nodeca/js-yaml), MIT.
 
 A documentação original do VocaTab está em `README.vocatab.md` (japonês) e `README.vocatab.en.md` (inglês).
