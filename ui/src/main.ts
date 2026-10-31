@@ -149,7 +149,7 @@ updateTime();
 const engineState = document.querySelector<HTMLElement>(".engine-state")!;
 const debug = new URLSearchParams(location.search).get("debug") === "1";
 let engineHooked = false;
-// 合成の進み具合の帯。短い編集で点滅しないよう、少し続いてから出す
+// 合成の進み具合の帯。つながっている間は出したまま（終わったのか見えないのか迷わないように）。短い編集で点滅しないよう、進み具合は少し続いてから出す
 // 画面の HTML が古いキャッシュのままでも動くよう、帯はここで作る
 const renderBar = document.createElement("div");
 renderBar.id = "render-bar";
@@ -170,14 +170,20 @@ function drawRenderBar(active: boolean, percent: number): void {
     rbStart = 0;
     clearInterval(rbTimer);
     rbTimer = 0;
-    renderBar.hidden = true;
+    renderBar.hidden = false;
+    renderBar.classList.remove("error");
+    renderBar.classList.add("done");
+    renderBar.setAttribute("aria-valuenow", "100");
+    rbFill.style.width = "100%";
+    rbText.textContent = rbLabel;
     return;
   }
   if (!rbStart) rbStart = performance.now();
   if (!rbTimer) rbTimer = window.setInterval(onEngineTick, 500); // 句の途中でも経過時間を進める
   const ms = performance.now() - rbStart;
-  renderBar.hidden = ms < RB_SHOW_MS;
-  renderBar.classList.remove("error");
+  renderBar.hidden = false;
+  if (ms < RB_SHOW_MS && renderBar.classList.contains("done")) return;
+  renderBar.classList.remove("error", "done");
   renderBar.setAttribute("aria-valuenow", String(percent));
   rbFill.style.width = `${percent}%`;
   rbText.textContent = `${percent}% · ${rbLabel} · ${Math.floor(ms / 1000)} s`;
@@ -222,10 +228,14 @@ function onEngineUpdate(): void {
     const frames = all.reduce((n, p) => n + p.nFrames, 0);
     const doneFrames = all.reduce((n, p) => n + (p.status === "済み" ? p.nFrames : 0), 0);
     rbPercent = pg ? Math.floor((100 * pg.loaded) / Math.max(1, pg.total)) : Math.floor((100 * doneFrames) / Math.max(1, frames));
-    rbLabel = loading || `${store.vocoder === "nsf" ? "NSF" : "NHVSing"} · ${idle}`;
-    drawRenderBar(!renderer.error && (!!pg || done < all.length), rbPercent);
+    const working = !!pg || done < all.length || renderer.working;
+    // 句の一覧が届く前（解析中）は「完了」と出さない
+    const barIdle = working && done >= all.length ? t("レンダリング中 {done}/{all} フレーズ", { done, all: all.length }) : idle;
+    rbLabel = loading || `${store.vocoder === "nsf" ? "NSF" : "NHVSing"} · ${barIdle}`;
+    drawRenderBar(!renderer.error && working, rbPercent);
     if (renderer.error) {
       renderBar.hidden = false;
+      renderBar.classList.remove("done");
       renderBar.classList.add("error");
       rbText.textContent = renderer.error;
     }

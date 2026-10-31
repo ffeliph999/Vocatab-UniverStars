@@ -223,6 +223,7 @@ label.check.disabled { opacity: 0.45; cursor: not-allowed; }
 /* 合成の進み具合: 見出しのすぐ下。句の計算に時間がかかっても止まって見えないよう、帯は動かし続ける */
 #render-bar { display: flex; align-items: center; gap: 8px; flex: none; height: 18px; padding: 0 14px; border-bottom: 1px solid var(--line); font-size: 10.5px; color: var(--muted); }
 #render-bar[hidden] { display: none; }
+#render-bar.done .rb-track::after { display: none; }
 #render-bar.error { color: var(--warn); }
 #render-bar.error .rb-track { display: none; }
 .rb-track { position: relative; flex: 1 1 0; min-width: 40px; height: 2px; border-radius: 1px; overflow: hidden; background: var(--accent-soft); }

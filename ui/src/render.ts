@@ -178,6 +178,11 @@ export class Renderer {
     return this.tracks.get(track.id) ?? [];
   }
 
+  /** 解析か合成を実行している途中か（句の一覧が届く前も含む） */
+  get working(): boolean {
+    return this.busy;
+  }
+
   /** まだ合成が済んでいない句の数（書き出す前の確認に使う）。 */
   pending(): number {
     if (this.busy) return Math.max(1, this.countPending());
