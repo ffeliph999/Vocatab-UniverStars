@@ -15,6 +15,8 @@ export class Store {
   vocoder = "";
   /** o vocoder escolhido não tem ramos de harmônicos/ruído (tipo NSF-HiFiGAN): só volume e rouquidão valem */
   vocoderNsf = false;
+  /** ピッチのペンの平滑化（0.2〜1.0。既定 20%） */
+  penSmooth = 0.2;
   /** 書き出しの設定（プロジェクトの外。undo に積まない） */
   exportOpts: ExportOptions = defaultExportOptions();
   private undoStack: string[] = [];

@@ -166,6 +166,14 @@ export class PianoRoll {
     return { t, v: Math.max(-1200, Math.min(1200, (this.view.yToPitch(y) - der.noDev[i]) * 100)) };
   }
 
+  /** ピッチのペン: 時刻 t の元のピッチ（セント）。声の無い所は NaN。 */
+  private offAt(t: number): number {
+    const der = this.derived();
+    const i = Math.round(t * secPerTick(this.store.project.bpm) * der.fps);
+    if (i < 0 || i >= der.noDev.length || Number.isNaN(der.noDev[i])) return NaN;
+    return der.noDev[i] * 100;
+  }
+
   private onDown(e: PointerEvent): void {
     if (this.tool === "pitch" && e.button === 2 && e.offsetX > KEY_W && e.offsetY > RULER_H) {
       (e.currentTarget as HTMLCanvasElement).setPointerCapture(e.pointerId);
@@ -200,7 +208,8 @@ export class PianoRoll {
     }
     if (this.tool === "pitch") {
       const before = s.snapshot();
-      const pen = new PenStroke(ensureCurve(s.track.params, "pitchDelta"), 0, 3 / this.view.pxPerTick);
+      const pen = new PenStroke(ensureCurve(s.track.params, "pitchDelta"), 0, 3 / this.view.pxPerTick,
+                          s.penSmooth, (t) => this.offAt(t));
       this.drag = { kind: "pitchpen", pen, eraser: null, connected: false, before };
       const p = this.devAt(x, y);
       if (p) this.penTo(p.t, p.v);

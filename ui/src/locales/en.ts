@@ -163,6 +163,8 @@ export const en: Record<string, string> = {
   "ドラッグ: 表示を動かす": "Drag: move the view",
   "音符を描く (2)": "Draw notes (2)",
   "ピッチのペン (3)": "Pitch pen (3)",
+  "ピッチのペンの平滑化": "Pitch pen smoothing",
+  "平滑化": "Smoothing",
   "ピッチの線": "Pitch line",
   "再生・一時停止（Space）": "Play/pause (Space)",
   "テンポは 20〜400 の数で入れてください（{s}）": "Enter a tempo between 20 and 400 ({s})",

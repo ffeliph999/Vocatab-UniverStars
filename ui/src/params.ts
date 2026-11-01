@@ -175,13 +175,44 @@ export function replaceRange(c: Curve, base: Pt[], lo: number, hi: number, pts: 
   c.pts = out.filter((p, i) => i === 0 || p[0] > out[i - 1][0]);
 }
 
+/** 一筆の点を平滑化（ガウス窓）。offs があれば「ずれ＋元のピッチ」（実際に見える線）を平滑化して、元のピッチを引き戻す。
+ *  両端は動かさない（窓を端に向けて狭める）。声の無い所（offs が NaN）や大きな切れ目では区間を分ける。 */
+function smoothPts(pts: Pt[], s: number, gap: number, offs?: (t: number) => number): Pt[] {
+  if (s <= 0 || pts.length < 3) return pts;
+  const sigma = s * 12;
+  const R = Math.ceil(sigma * 3);
+  const o = pts.map(([t]) => (offs ? offs(t) : 0));
+  const a = pts.map(([, v], i) => v + o[i]);
+  const out: Pt[] = [];
+  let i0 = 0;
+  while (i0 < pts.length) {
+    if (Number.isNaN(a[i0])) { out.push(pts[i0]); i0++; continue; }
+    let i1 = i0;
+    while (i1 + 1 < pts.length && !Number.isNaN(a[i1 + 1]) && pts[i1 + 1][0] - pts[i1][0] <= 3 * gap) i1++;
+    for (let i = i0; i <= i1; i++) {
+      const r = Math.min(R, i - i0, i1 - i);
+      let sum = 0;
+      let ws = 0;
+      for (let k = -r; k <= r; k++) {
+        const w = Math.exp(-(k * k) / (2 * sigma * sigma));
+        sum += a[i + k] * w;
+        ws += w;
+      }
+      out.push([pts[i][0], Math.max(-1200, Math.min(1200, sum / ws - o[i]))]);
+    }
+    i0 = i1 + 1;
+  }
+  return out;
+}
+
 /** 鉛筆の一筆。add のたびに、描いた範囲だけを描いた値で置き換える（外側は描き始めの前の形のまま）。 */
 export class PenStroke {
   private readonly base: Pt[];
   private readonly buckets = new Map<number, Pt>(); // gap ごとに 1 点（同じ所を描き直したら新しい値）
   private last: Pt | null = null;
 
-  constructor(private c: Curve, private def: number, private gap: number) {
+  constructor(private c: Curve, private def: number, private gap: number,
+              private smooth = 0, private offs?: (t: number) => number) {
     this.base = c.pts.map(([t, v]) => [t, v] as Pt);
   }
 
@@ -198,7 +229,8 @@ export class PenStroke {
     }
     put(t, v);
     this.last = [t, v];
-    const pts = [...this.buckets.values()].sort((a, b) => a[0] - b[0]);
+    const raw = [...this.buckets.values()].sort((a, b) => a[0] - b[0]);
+    const pts = smoothPts(raw, this.smooth, this.gap, this.offs);
     replaceRange(this.c, this.base, pts[0][0], pts[pts.length - 1][0], pts, this.def);
   }
 }

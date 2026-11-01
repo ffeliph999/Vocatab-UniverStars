@@ -268,6 +268,10 @@ const TOOL_DEFS: Array<[Tool, string, string, boolean]> = [
 // 指の端末では最初の道具を手にする（1 本指で表示を動かせ、音符はうっかり動かない）
 const touchUi = matchMedia("(pointer: coarse)").matches;
 if (touchUi) pr.tool = "pan";
+try {
+  const sv = Number(localStorage.getItem("svs-editor.penSmooth"));
+  if (localStorage.getItem("svs-editor.penSmooth") !== null && sv >= 0 && sv <= 100) store.penSmooth = sv / 100;
+} catch { /* 読めなければ既定の 20% */ }
 const renderTools = (): void => {
   tools.innerHTML = "";
   for (const [tool, icon, title, enabled] of TOOL_DEFS) {
@@ -279,6 +283,27 @@ const renderTools = (): void => {
     b.innerHTML = ICONS[icon];
     b.addEventListener("click", () => setTool(tool));
     tools.appendChild(b);
+  }
+  if (pr.tool === "pitch") {
+    const wrap = document.createElement("label");
+    wrap.style.cssText = "display:flex;align-items:center;gap:4px;margin-left:6px;font-size:11px;white-space:nowrap;";
+    wrap.title = t("ピッチのペンの平滑化");
+    const val = document.createElement("span");
+    val.textContent = `${Math.round(store.penSmooth * 100)}%`;
+    const r = document.createElement("input");
+    r.type = "range";
+    r.min = "0";
+    r.max = "100";
+    r.step = "5";
+    r.value = String(Math.round(store.penSmooth * 100));
+    r.style.width = "70px";
+    r.addEventListener("input", () => {
+      store.penSmooth = Number(r.value) / 100;
+      val.textContent = `${r.value}%`;
+      try { localStorage.setItem("svs-editor.penSmooth", r.value); } catch { /* 保存できなくても動く */ }
+    });
+    wrap.append(t("平滑化"), r, val);
+    tools.appendChild(wrap);
   }
 };
 const setTool = (t: Tool): void => {
