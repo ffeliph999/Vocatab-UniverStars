@@ -349,7 +349,7 @@ export class ParamPanel {
       ctx.setLineDash([]);
     }
     // NSF-HiFiGAN では効かないパラメータ
-    if (ed.voiceParam && this.store.vocoder === "nsf") {
+    if (ed.voiceParam && this.store.vocoderNsf) {
       ctx.fillStyle = cssVar("--outside");
       ctx.fillRect(KEY_W, 0, w - KEY_W, h);
       ctx.fillStyle = cssVar("--muted");

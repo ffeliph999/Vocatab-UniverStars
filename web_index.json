@@ -48,13 +48,27 @@
    }
   },
   {
-   "key": "pc_nsf_hifigan_2025_02",
+   "key": "nhvsing_vozes_01_11_2026",
+   "name": "NHVSing ajustado (nhvsing_vozes_ft1300)",
+   "kind": "nhvsing",
+   "voice_params": true,
+   "hop": 256,
+   "gain_db": 0.0,
+   "onnx": "vocoders/nhvsing_vozes_01_11_2026/vocoder.onnx",
+   "bytes": 6980828,
+   "grid": {
+    "sample_rate": 44100,
+    "hop": 256
+   }
+  },
+  {
+   "key": "pc_nsf_hifigan",
    "name": "pc-nsf-hifigan 2025.02",
    "kind": "nsf_hifigan",
    "voice_params": false,
    "hop": 512,
    "gain_db": 0.0,
-   "onnx": "vocoders/pc_nsf_hifigan_2025_02/vocoder.onnx",
+   "onnx": "vocoders/pc_nsf_hifigan/vocoder.onnx",
    "bytes": 56616643,
    "grid": {
     "sample_rate": 44100,

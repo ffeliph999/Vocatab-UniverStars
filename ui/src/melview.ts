@@ -380,7 +380,7 @@ export class MelPanel {
 
   private compute(): void {
     const s = this.store;
-    const nsf = s.vocoder === "nsf";
+    const nsf = s.vocoderNsf;
     // パネルごと閉じている（下のタブ）間は計算しない。開いたときに main.ts が schedule() を呼ぶ
     if (this.el.hidden) return;
     KINDS.forEach(([kind], i) => {

@@ -11,7 +11,10 @@ export class Store {
   selected = new Set<number>();
   playTick = 0;
   version = 0; // プロジェクトが変わるたびに増える（計算の結果の取り置きに使う）
-  vocoder: "nhv" | "nsf" = "nhv";
+  /** chave do vocoder escolhido (pasta em vocoders/); "" = padrão */
+  vocoder = "";
+  /** o vocoder escolhido não tem ramos de harmônicos/ruído (tipo NSF-HiFiGAN): só volume e rouquidão valem */
+  vocoderNsf = false;
   /** 書き出しの設定（プロジェクトの外。undo に積まない） */
   exportOpts: ExportOptions = defaultExportOptions();
   private undoStack: string[] = [];

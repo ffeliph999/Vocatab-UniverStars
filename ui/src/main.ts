@@ -231,7 +231,7 @@ function onEngineUpdate(): void {
     const working = !!pg || done < all.length || renderer.working;
     // 句の一覧が届く前（解析中）は「完了」と出さない
     const barIdle = working && done >= all.length ? t("レンダリング中 {done}/{all} フレーズ", { done, all: all.length }) : idle;
-    rbLabel = loading || `${store.vocoder === "nsf" ? "NSF" : "NHVSing"} · ${barIdle}`;
+    rbLabel = loading || `${renderer.vocoderName() || "NHVSing"} · ${barIdle}`;
     drawRenderBar(!renderer.error && working, rbPercent);
     if (renderer.error) {
       renderBar.hidden = false;
@@ -485,8 +485,9 @@ window.addEventListener("keydown", (e) => {
 
 // ── 見本の状態（画面の確認用。?select=3&vocoder=nsf&tab=voice のように使う）────
 const q = new URLSearchParams(location.search);
-if (q.get("vocoder") === "nsf") {
-  store.vocoder = "nsf";
+if (q.get("vocoder")) {
+  store.vocoder = q.get("vocoder")!;
+  store.vocoderNsf = store.vocoder.includes("nsf");
   store.changed("settings");
 }
 const sel = q.get("select");

@@ -138,7 +138,7 @@ export class SidePanel {
     const t = this.store.track;
     const audio = isAudioTrack(t);
     if (!audio) {
-      this.section("voice", tx("歌い手と声"), `${this.engine?.singerLabel(t) ?? t.voice} · ${this.store.vocoder === "nsf" ? "NSF-HiFiGAN" : "NHVSing"}`,
+      this.section("voice", tx("歌い手と声"), `${this.engine?.singerLabel(t) ?? t.voice} · ${this.engine?.vocoderName() || "NHVSing"}`,
                    (el) => this.renderVoice(el));
       this.section("fx", tx("エフェクター"), this.fxSummary(), (el) => {
         this.fx = new FxPanel(this.store, (title) => {
@@ -226,25 +226,31 @@ export class SidePanel {
       s.commit(before);
       s.changed("project");
     });
-    // ボコーダの切り替えは、エンジンが NSF-HiFiGAN も持つときだけ出す（配布版は NHVSing だけ。Python 版で vocoders/ に置けば出る）
-    const nsfOk = !!this.engine?.connected && this.engine.hasVocoder("nsf");
-    if (this.engine?.connected && !nsfOk && s.vocoder === "nsf") s.vocoder = "nhv";
-    if (nsfOk) {
-      const seg = document.createElement("div");
-      seg.className = "seg";
-      seg.title = tx("ボコーダ");
-      for (const [key, label] of [["nhv", "NHVSing v3.3"], ["nsf", "NSF-HiFiGAN"]] as const) {
-        const b = document.createElement("button");
-        b.textContent = label;
-        b.className = s.vocoder === key ? "on" : "";
-        b.addEventListener("click", () => {
-          s.vocoder = key;
-          s.changed("settings");
-        });
-        seg.appendChild(b);
+    // ボコーダの選択: vocoders/ にあるものを全部リストに出す
+    const vlist = this.engine?.connected ? this.engine.vocoderList() : [];
+    if (this.engine?.connected && vlist.length) {
+      const cur = this.engine.vocoderInfo();
+      if (cur) { s.vocoder = cur.key; s.vocoderNsf = !cur.voice_params; }
+    }
+    if (vlist.length > 1) {
+      const sel = document.createElement("select");
+      sel.title = tx("ボコーダ");
+      sel.style.cssText = "width:100%;margin:8px 0 2px;";
+      for (const v of vlist) {
+        const o = document.createElement("option");
+        o.value = v.key;
+        o.textContent = v.name;
+        o.selected = v.key === s.vocoder;
+        sel.appendChild(o);
       }
-      head.appendChild(seg);
-      if (s.vocoder === "nsf") {
+      sel.addEventListener("change", () => {
+        const v = vlist.find((x) => x.key === sel.value);
+        s.vocoder = sel.value;
+        s.vocoderNsf = !!v && !v.voice_params;
+        s.changed("settings");
+      });
+      head.appendChild(sel);
+      if (s.vocoderNsf) {
         head.insertAdjacentHTML("beforeend", `<p class="hint">${tx("NSF-HiFiGAN は調波・雑音の分岐を持たないため、音量とうなり以外は効きません。")}</p>`);
       }
     }
@@ -255,7 +261,7 @@ export class SidePanel {
     base.innerHTML = `<h3>${tx("声の調整")}<span class="h-note">${tx("ダブルクリックで元に戻す")}</span></h3>`;
     for (const [key, label, min, max, step, fmt, vp] of VOICE_PARAMS) {
       this.refreshers.push(slider(s, base, {
-        label, min, max, step, fmt, def: defaultBase()[key], disabled: vp && s.vocoder === "nsf",
+        label, min, max, step, fmt, def: defaultBase()[key], disabled: vp && s.vocoderNsf,
         get: () => t.base[key], set: (v) => { t.base[key] = v; },
       }, (on) => { this.dragging = on; }));
     }

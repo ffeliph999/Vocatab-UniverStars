@@ -164,14 +164,21 @@ export class Renderer {
   }
 
   /** 選んでいるボコーダの鍵（NSF-HiFiGAN が無ければ NHVSing を使う）。 */
-  vocoderKey(): string {
+  vocoderInfo() {
     const vocs = this.info?.vocoders ?? [];
-    const want = this.store.vocoder === "nsf" ? "nsf" : "nhvsing";
-    return (vocs.find((v) => v.kind.includes(want)) ?? vocs[0])?.key ?? "";
+    return vocs.find((v) => v.key === this.store.vocoder) ?? vocs.find((v) => v.kind.includes("nhvsing")) ?? vocs[0];
   }
 
-  hasVocoder(kind: "nhv" | "nsf"): boolean {
-    return (this.info?.vocoders ?? []).some((v) => v.kind.includes(kind === "nsf" ? "nsf" : "nhvsing"));
+  vocoderKey(): string {
+    return this.vocoderInfo()?.key ?? "";
+  }
+
+  vocoderName(): string {
+    return this.vocoderInfo()?.name ?? "";
+  }
+
+  vocoderList(): Array<{ key: string; name: string; kind: string; voice_params: boolean }> {
+    return this.info?.vocoders ?? [];
   }
 
   phrases(track: Track): EPhrase[] {
