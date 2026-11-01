@@ -272,6 +272,7 @@ label.check.disabled { opacity: 0.45; cursor: not-allowed; }
 .np-body { padding: 4px 14px 12px; }
 .note-pop .field { grid-template-columns: 64px minmax(0, 1fr) 48px; }
 .note-pop .np-sub, .note-pop .retake-head .muted, .note-pop .val { color: #a9aec4; }
+.np-check { display: flex; align-items: center; gap: 6px; margin: 8px 0 2px; font-size: 12px; cursor: pointer; }
 .retake-row { display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 5px; margin: 8px 0 0; font-size: 12px; }
 .retake-head { display: flex; flex-direction: column; min-width: 0; }
 .retake-head .muted { font-size: 10px; white-space: nowrap; }

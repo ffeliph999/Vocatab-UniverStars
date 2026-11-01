@@ -3,7 +3,19 @@
 export const TPQ = 480;
 export const FPS = 44100 / 256; // 音響モデル・ボコーダの格子（172.27 フレーム/秒）
 
+/** 手で付けるビブラート（あれば AI のビブラートの代わりにこれを使う） */
+export interface ManualVibrato {
+  depth: number; // 振れ幅（セント、中心から片側）
+  rate: number; // 速さ（Hz）
+  start: number; // 始まる位置（音符の長さに対する割合 0〜0.9。そこから音符の終わりまで）
+  fadeIn: number; // 始めをなだらかにする長さ（秒。0 でなだらかにしない）
+  fadeOut: number; // 終わりをなだらかにする長さ（秒。0 でなだらかにしない）
+}
+
+export const defaultVibrato = (): ManualVibrato => ({ depth: 60, rate: 5.5, start: 0.35, fadeIn: 0.3, fadeOut: 0.15 });
+
 export interface NoteAttrs {
+  vib?: ManualVibrato;
   vMod: number; // ビブラートの変調（0〜2。AI のビブラートの成分に掛ける倍率）
   iMod?: number; // 抑揚の倍率（0〜2。AI の抑揚 = 音高の階段からのずれに掛ける。無ければ 1）
   // AI リテイクの種（0 = 元のテイク）。その音符の所だけ、モデルの乱数を差し替える
@@ -160,7 +172,7 @@ export function defaultAttrs(): NoteAttrs {
 }
 
 /** 音符の設定として持つ項目（読み込むときに、これ以外の古い項目は落とす。projectfile.ts の migrate） */
-export const NOTE_ATTR_KEYS: Array<keyof NoteAttrs> = ["vMod", "iMod", "retakeF0", "retakeMel", "retakeF0Prev", "retakeMelPrev"];
+export const NOTE_ATTR_KEYS: Array<keyof NoteAttrs> = ["vMod", "iMod", "vib", "retakeF0", "retakeMel", "retakeF0Prev", "retakeMelPrev"];
 
 export const secPerTick = (bpm: number): number => 60 / (bpm * TPQ);
 

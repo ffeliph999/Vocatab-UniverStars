@@ -142,6 +142,40 @@ function intonationMods(ph: EPhrase, notes: Map<number, { attrs: { iMod?: number
   return out;
 }
 
+const smooth01 = (x: number): number => {
+  const c = Math.max(0, Math.min(1, x));
+  return c * c * (3 - 2 * c);
+};
+
+/** 手で付けたビブラート（音符ごと）を、句のフレームごとの F0 の足し分（log2）にする。始めは位相 0 から（段差なし）。 */
+function manualVibrato(ph: EPhrase, track: Track, spt: number): Float32Array {
+  const out = new Float32Array(ph.nFrames);
+  for (const n of track.notes) {
+    const v = n.attrs.vib;
+    if (!v) continue;
+    const t0 = (n.onset + v.start * n.dur) * spt;
+    const t1 = (n.onset + n.dur) * spt;
+    const len = t1 - t0;
+    if (len <= 0) continue;
+    let fi = Math.max(0, v.fadeIn);
+    let fo = Math.max(0, v.fadeOut);
+    if (fi + fo > len) {
+      const k = len / (fi + fo);
+      fi *= k;
+      fo *= k;
+    }
+    const a = Math.max(0, Math.ceil(t0 * FPS) - ph.startFrame);
+    const b = Math.min(ph.nFrames, Math.ceil(t1 * FPS) - ph.startFrame);
+    for (let i = a; i < b; i++) {
+      const t = (ph.startFrame + i) / FPS;
+      const tl = t - t0;
+      const env = (fi > 0 ? smooth01(tl / fi) : 1) * (fo > 0 ? smooth01((t1 - t) / fo) : 1);
+      out[i] += (v.depth / 1200) * Math.sin(2 * Math.PI * v.rate * tl) * env;
+    }
+  }
+  return out;
+}
+
 /**
  * 句の最後の F0（log2 Hz）を組み立てる。無声の所も途切れずに作る（ボコーダと音響モデルに渡すため）。
  *   F0 = 土台 + 抑揚 × 抑揚の倍率（音符ごと）× 抑揚の強さ（曲線）
@@ -158,12 +192,14 @@ export function composeF0(ph: EPhrase, track: Track, project: Project): { log2: 
   const intDef = paramDef("intonationEnv").def;
   const log2 = new Float32Array(ph.nFrames);
   const noDev = new Float32Array(ph.nFrames);
+  const manual = manualVibrato(ph, track, spt);
   for (let i = 0; i < ph.nFrames; i++) {
     const tick = (ph.startFrame + i) / FPS / spt;
-    const mod = notes.get(fn[i])?.attrs.vMod ?? 1;
+    const nt = notes.get(fn[i]);
+    const mod = nt?.attrs.vib ? 0 : nt?.attrs.vMod ?? 1; // 手のビブラートがある音符は AI のビブラートを使わない
     const env = evalCurve(track.params.vibratoEnv, tick, envDef);
     const ie = imod[i] * evalCurve(track.params.intonationEnv, tick, intDef);
-    const v = ph.base[i] + (ph.plain[i] - ph.base[i]) * ie + ph.vib[i] * mod * env;
+    const v = ph.base[i] + (ph.plain[i] - ph.base[i]) * ie + ph.vib[i] * mod * env + manual[i];
     noDev[i] = v;
     log2[i] = v + evalCurve(track.params.pitchDelta, tick, 0) / 1200;
   }

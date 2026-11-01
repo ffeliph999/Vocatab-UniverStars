@@ -6,7 +6,7 @@
 import type { Derived } from "./derive";
 import { t } from "./i18n";
 import type { Note } from "./model";
-import { pitchName, TPQ } from "./model";
+import { defaultVibrato, pitchName, TPQ } from "./model";
 import type { PianoRoll } from "./pianoroll";
 import { slider } from "./side";
 import type { Store } from "./store";
@@ -192,8 +192,44 @@ export class NotePopover {
     slider(s, body, {
       label: t("ビブラート"), min: 0, max: 2, step: 0.01, def: 1, get: () => n0.attrs.vMod,
       set: (v) => { for (const n of notes) n.attrs.vMod = v; }, fmt: (v) => `× ${v.toFixed(2)}`,
+      disabled: !!n0.attrs.vib,
     }, (on) => { this.dragging = on; });
     body.lastElementChild!.setAttribute("title", t("AI が付けたビブラートの幅の倍率（0 で消える）。ダブルクリックで 1 に戻す"));
+
+    // 手で付けるビブラート（付けると AI のビブラートの代わりになる）
+    const vrow = document.createElement("label");
+    vrow.className = "np-check";
+    vrow.title = t("音符に自分でビブラートを付ける。付けると AI のビブラートは使わない");
+    const vcb = document.createElement("input");
+    vcb.type = "checkbox";
+    vcb.checked = !!n0.attrs.vib;
+    vcb.addEventListener("change", () => {
+      const before = s.snapshot();
+      for (const n of notes) {
+        if (vcb.checked) n.attrs.vib ??= { ...(n0.attrs.vib ?? defaultVibrato()) };
+        else delete n.attrs.vib;
+      }
+      s.commit(before);
+      s.changed("project");
+    });
+    vrow.append(vcb, t("ビブラートを手で付ける"));
+    body.appendChild(vrow);
+    if (n0.attrs.vib) {
+      const v0 = n0.attrs.vib;
+      const vs = (label: string, key: "depth" | "rate" | "start" | "fadeIn" | "fadeOut", min: number, max: number, step: number,
+                  fmt: (v: number) => string, tip: string): void => {
+        slider(s, body, {
+          label, min, max, step, def: defaultVibrato()[key], get: () => v0[key],
+          set: (v) => { for (const n of notes) if (n.attrs.vib) n.attrs.vib[key] = v; }, fmt,
+        }, (on) => { this.dragging = on; });
+        body.lastElementChild!.setAttribute("title", tip);
+      };
+      vs(t("振れ幅"), "depth", 0, 200, 1, (v) => `±${v} ct`, t("ビブラートの振れ幅（中心から片側、セント）。ダブルクリックで戻す"));
+      vs(t("速さ"), "rate", 2, 10, 0.1, (v) => `${v.toFixed(1)} Hz`, t("ビブラートの速さ（1 秒あたりの揺れ）"));
+      vs(t("開始位置"), "start", 0, 0.9, 0.01, (v) => `${Math.round(v * 100)}%`, t("音符のどこからビブラートを始めるか（音符の長さに対する割合）"));
+      vs(t("入りの長さ"), "fadeIn", 0, 1.5, 0.05, (v) => (v === 0 ? t("なし") : `${v.toFixed(2)} s`), t("始めをなだらかに大きくする長さ（0 でなだらかにしない）"));
+      vs(t("抜きの長さ"), "fadeOut", 0, 1.5, 0.05, (v) => (v === 0 ? t("なし") : `${v.toFixed(2)} s`), t("終わりをなだらかに小さくする長さ（0 でなだらかにしない）"));
+    }
 
     const rows: Array<["retakeF0" | "retakeMel", "retakeF0Prev" | "retakeMelPrev", string, string]> = [
       ["retakeF0", "retakeF0Prev", t("ピッチ"), t("抑揚とビブラートを取り直す")],
