@@ -1,0 +1,7 @@
+name: NHVSing ajustado (nhvsing_vozes_ft1300)
+kind: nhvsing
+onnx: vocoder.onnx
+grid:
+  sample_rate: 44100
+  hop: 256
+voice_params: true
