@@ -1,0 +1,7 @@
+# PC-DDSP LoFi Vocoder (versão A). Mesma interface do pc-nsf-hifigan: entradas mel [1,T,128] (ln-mel) e f0 [1,T] (Hz)
+# no hop 512, 44,1 kHz; saída waveform. Sem os ramos harmônico/ruído: dos ajustes de voz, só volume e rouquidão funcionam.
+name: PC-DDSP-LoFiVocoder-VerA
+kind: nsf_hifigan
+onnx: model_a.onnx
+grid: {sample_rate: 44100, hop: 512}
+voice_params: false
