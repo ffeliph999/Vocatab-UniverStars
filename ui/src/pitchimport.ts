@@ -1,6 +1,7 @@
 // 他のソフトのピッチの線（OpenUtau の pitd・Synthesizer V の pitchDelta）を VocaTab のピッチのずれ（pitchDelta、セント）にする。
-//   線が音符ごとに細かく描いてある（なぞったピッチ。元の音符の「階段」からのずれ）ときは、AI の抑揚・ビブラートを切って、
-//   階段 + 線 がそのまま聞こえるようにする（VocaTab の土台は階段を σ 20 ms でならしたものなので、その差を足す）。
+//   線が音符ごとに細かく描いてある（なぞったピッチ）ときは、AI の抑揚・ビブラートを切って、
+//   「音符のつなぎ目をなだらかにした土台（前後 60 ms、余弦。この線のなぞり方に合わせて当てはめた値）+ 線」がそのまま聞こえるようにする
+//   （VocaTab の土台は階段を σ 20 ms でならしたものなので、その差を足す）。
 //   まばらな直しだけのときは、線をそのままピッチのずれにして AI の抑揚はそのまま残す。
 import type { Curve } from "./model";
 
@@ -14,6 +15,8 @@ export interface ImportedPitch {
 
 const BASELINE_SIGMA_SEC = 0.02; // derive.ts の BASELINE_SIGMA と同じ
 const PAD_TICKS = 30;
+const GLIDE_HALF_SEC = 0.06; // 音符のつなぎ目のなだらかな変化: 頭の前後それぞれ
+const GLIDE_MAX_GAP = 240; // これより離れた音符どうしはつなぎ目をなだらかにしない（刻み）
 const EPS_CENT = 2; // 間引きの許容（セント）
 const MAX_CENT = 1200;
 
@@ -77,6 +80,21 @@ export function importPitch(notes: Array<{ onset: number; dur: number; pitch: nu
   for (const nt of notes) {
     for (let t = Math.max(t0, Math.round(nt.onset)); t < Math.min(t1 + 1, Math.round(nt.onset + nt.dur)); t++) step[t - t0] = nt.pitch;
   }
+  // つなぎ目をなだらかにした土台（隣り合う音符の高さを、頭を中心に余弦でつなぐ）
+  const glide = new Float32Array(step);
+  const H = GLIDE_HALF_SEC * (bpm * 480) / 60;
+  const sorted = [...notes].sort((a, b) => a.onset - b.onset);
+  for (let i = 1; i < sorted.length; i++) {
+    const c = sorted[i];
+    const p = sorted[i - 1];
+    if (c.onset - (p.onset + p.dur) > GLIDE_MAX_GAP) continue;
+    const a = Math.max(t0, Math.ceil(c.onset - H));
+    const b = Math.min(t1, Math.floor(c.onset + H));
+    for (let t = a; t <= b; t++) {
+      const u = 0.5 - 0.5 * Math.cos((Math.PI * (t - (c.onset - H))) / (2 * H));
+      glide[t - t0] = p.pitch + (c.pitch - p.pitch) * u;
+    }
+  }
   const sigma = BASELINE_SIGMA_SEC * (bpm * 480) / 60; // 刻み
   const R = Math.ceil(4 * sigma);
   const ker = Array.from({ length: 2 * R + 1 }, (_, k) => Math.exp(-0.5 * ((k - R) / sigma) ** 2));
@@ -114,7 +132,7 @@ export function importPitch(notes: Array<{ onset: number; dur: number; pitch: nu
     }
     const t = t0 + i;
     let corr = 0;
-    if (!Number.isNaN(step[i])) {
+    if (!Number.isNaN(glide[i])) {
       let s = 0;
       let w = 0;
       for (let k = -R; k <= R; k++) {
@@ -123,7 +141,7 @@ export function importPitch(notes: Array<{ onset: number; dur: number; pitch: nu
         s += ker[k + R] * v;
         w += ker[k + R];
       }
-      corr = (step[i] - s / w) * 100;
+      if (w > 0) corr = (glide[i] - s / w) * 100;
     }
     if (!inRun) { out.push([t - 3, 0]); inRun = true; }
     out.push([t, clamp(rawAt(t) + corr)]);
