@@ -62,6 +62,20 @@
    }
   },
   {
+   "key": "pc_ddsp_lofi_vera",
+   "name": "PC-DDSP-LoFiVocoder-VerA",
+   "kind": "nsf_hifigan",
+   "voice_params": false,
+   "hop": 512,
+   "gain_db": 0.0,
+   "onnx": "vocoders/pc_ddsp_lofi_vera/model_a.onnx",
+   "bytes": 62959988,
+   "grid": {
+    "sample_rate": 44100,
+    "hop": 512
+   }
+  },
+  {
    "key": "pc_nsf_hifigan",
    "name": "pc-nsf-hifigan 2025.02",
    "kind": "nsf_hifigan",
