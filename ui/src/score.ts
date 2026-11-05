@@ -6,11 +6,16 @@
 // 休符・メリスマの記号は日本語の言語パック（PrettyPitch の dict/ja.yaml の score:）と同じ。言語を増やすときはここを差し替える。
 
 import { t as tx } from "./i18n";
+import type { Curve, ManualVibrato, ParamKey } from "./model";
 
 export interface ScoreTrack {
   name: string;
   /** 刻み（4 分音符 = 480）。breath: 直前にブレスの記号（UST の「息」など）があった音符 */
-  notes: Array<{ onset: number; dur: number; pitch: number; lyric: string; breath?: boolean }>;
+  notes: Array<{ onset: number; dur: number; pitch: number; lyric: string; breath?: boolean;
+                 /** 取り込んだピッチの線がある音符: AI の抑揚・ビブラートの倍率（0 で切る）と、手のビブラート */
+                 iMod?: number; vMod?: number; vib?: ManualVibrato }>;
+  /** 取り込んだパラメータの曲線（刻みは 480/4 分音符。音符と同じ時間の基準） */
+  params?: Partial<Record<ParamKey, Curve>>;
 }
 export interface ScoreResult {
   bpm: number;
@@ -256,8 +261,9 @@ async function mxlText(buf: ArrayBuffer): Promise<string> {
 export async function parseScoreFile(name: string, buf: ArrayBuffer): Promise<ScoreResult> {
   const ext = name.toLowerCase().replace(/^.*(\.[^.]+)$/, "$1");
   if (ext === ".ustx") return (await import("./ustx")).parseUstx(new TextDecoder().decode(buf));
+  if (ext === ".svp") return (await import("./svp")).parseSvp(new TextDecoder().decode(buf));
   if (ext === ".ust") return parseUst(new Uint8Array(buf));
   if (ext === ".mxl") return parseMusicXml(await mxlText(buf));
   if (ext === ".musicxml" || ext === ".xml") return parseMusicXml(new TextDecoder().decode(buf));
-  throw new Error(tx("読める楽譜は UST・USTX と MusicXML（.musicxml・.xml・.mxl）です: {name}", { name }));
+  throw new Error(tx("読める楽譜は UST・USTX・SVP と MusicXML（.musicxml・.xml・.mxl）です: {name}", { name }));
 }

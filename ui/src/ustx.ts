@@ -9,7 +9,8 @@
 import { load as yamlLoad, dump as yamlDump } from "./vendor/js-yaml.mjs";
 import { t as tx } from "./i18n";
 import { normalizeUstLyric, type ScoreResult, type ScoreTrack } from "./score";
-import type { Project } from "./model";
+import type { ManualVibrato, Project } from "./model";
+import { importPitch } from "./pitchimport";
 import { isAudioTrack } from "./model";
 
 const TPQ = 480;
@@ -27,11 +28,24 @@ function ustxLyric(raw: string): { lyric: string | null; breath: boolean } {
   return { lyric: u.lyric, breath: false };
 }
 
-interface UstxNote { position: number; duration: number; tone: number; lyric: string }
-interface UstxPart { track_no?: number; position?: number; name?: string; notes?: UstxNote[] }
+interface UstxVibrato { length?: number; period?: number; depth?: number; in?: number; out?: number }
+interface UstxNote { position: number; duration: number; tone: number; lyric: string; vibrato?: UstxVibrato }
+interface UstxCurve { abbr?: string; xs?: number[]; ys?: number[] }
+interface UstxPart { track_no?: number; position?: number; name?: string; notes?: UstxNote[]; curves?: UstxCurve[] }
 interface UstxDoc {
   bpm?: number; resolution?: number; tempos?: Array<{ position: number; bpm: number }>;
   tracks?: Array<{ track_name?: string }>; voice_parts?: UstxPart[];
+}
+
+/** OpenUtau のビブラート（length = 音符に対する % ・period = ms ・depth = セント・in/out = %）→ 手のビブラート。length が 0 ならなし。 */
+function ustxVibrato(v: UstxVibrato | undefined, dur: number, bpm: number): ManualVibrato | null {
+  const length = Number(v?.length ?? 0);
+  if (!v || !(length > 0) || !(Number(v.period) > 0)) return null;
+  const len = Math.min(100, length) / 100;
+  const sec = (dur * len * 60) / (bpm * TPQ);
+  return { depth: Math.max(0, Math.min(200, Number(v.depth ?? 25))), rate: Math.max(2, Math.min(10, 1000 / Number(v.period))),
+           start: Math.min(0.9, 1 - len), fadeIn: Math.min(1.5, (sec * Number(v.in ?? 0)) / 100),
+           fadeOut: Math.min(1.5, (sec * Number(v.out ?? 0)) / 100) };
 }
 
 export function parseUstx(text: string): ScoreResult {
@@ -45,15 +59,23 @@ export function parseUstx(text: string): ScoreResult {
     warnings.push(tx("テンポが途中で変わります（未対応）。最初の値 {bpm} を使います", { bpm }));
   }
   // トラック番号ごとに、パートの位置を足した絶対位置で音符を集める
-  const byTrack = new Map<number, Array<{ onset: number; dur: number; pitch: number; raw: string }>>();
+  const byTrack = new Map<number, Array<{ onset: number; dur: number; pitch: number; raw: string; vib?: UstxVibrato }>>();
+  const pitdByTrack = new Map<number, Array<[number, number]>>();
   for (const part of doc.voice_parts) {
     const k = Number(part.track_no ?? 0);
     const list = byTrack.get(k) ?? [];
     for (const n of part.notes ?? []) {
       list.push({ onset: (Number(part.position ?? 0) + Number(n.position)) * scale, dur: Number(n.duration) * scale,
-                  pitch: Number(n.tone), raw: String(n.lyric ?? "") });
+                  pitch: Number(n.tone), raw: String(n.lyric ?? ""), vib: n.vibrato });
     }
     byTrack.set(k, list);
+    // ピッチの線（pitd: 刻み・セント。パートの位置からの相対）
+    for (const c of part.curves ?? []) {
+      if (c.abbr !== "pitd" || !c.xs || !c.ys) continue;
+      const arr = pitdByTrack.get(k) ?? [];
+      for (let i = 0; i < c.xs.length; i++) arr.push([(Number(part.position ?? 0) + Number(c.xs[i])) * scale, Number(c.ys[i])]);
+      pitdByTrack.set(k, arr);
+    }
   }
   const tracks: ScoreTrack[] = [];
   let breaths = 0;
@@ -69,11 +91,20 @@ export function parseUstx(text: string): ScoreResult {
         continue;
       }
       if (l.lyric === null || !(n.dur > 0)) continue;
+      const vib = ustxVibrato(n.vib, n.dur, bpm);
       notes.push({ onset: Math.round(n.onset), dur: Math.max(1, Math.round(n.dur)), pitch: n.pitch, lyric: l.lyric,
-                   ...(breath ? { breath: true } : {}) });
+                   ...(breath ? { breath: true } : {}), ...(vib ? { vib } : {}) });
       breath = false;
     }
-    if (notes.length) tracks.push({ name: doc.tracks?.[k]?.track_name ?? `Track${k + 1}`, notes });
+    if (!notes.length) continue;
+    const track: ScoreTrack = { name: doc.tracks?.[k]?.track_name ?? `Track${k + 1}`, notes };
+    const pit = importPitch(notes, pitdByTrack.get(k) ?? [], bpm);
+    if (pit) {
+      track.params = { pitchDelta: pit.curve };
+      for (const i of pit.traced) { notes[i].iMod = 0; notes[i].vMod = 0; }
+      if (pit.traced.length) warnings.push(tx("ピッチの線を取り込みました（{n} 音符は AI の抑揚を切ってあります）", { n: pit.traced.length }));
+    }
+    tracks.push(track);
   }
   if (breaths) warnings.push(tx("ブレスの記号 {n} 個を休符にしました", { n: breaths }));
   return { bpm, tracks, warnings };

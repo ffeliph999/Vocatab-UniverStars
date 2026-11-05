@@ -2,7 +2,7 @@
 // 保存のしかたは projectfile.ts。ここはブラウザでのファイルのやり取りと画面だけ。
 // Chrome・Edge では File System Access API で同じファイルに上書きできる。ほかのブラウザではダウンロードになる。
 import { localeTag, t as tx } from "./i18n";
-import { defaultAttrs, defaultBase, isAudioTrack, type Project, TPQ, type Track, trackRegion } from "./model";
+import { defaultAttrs, defaultBase, isAudioTrack, type ParamKey, type Project, TPQ, type Track, trackRegion } from "./model";
 import {
   autosave, bundle, clearAutosave, migrate, missingAudio, openBundle, relink, serialize,
 } from "./projectfile";
@@ -104,7 +104,7 @@ export class FileMenu {
       [tx("保存"), "⌘S", () => void this.save()],
       [tx("名前を付けて保存"), "⇧⌘S", () => void this.saveAs()],
       [tx("音声も含めて書き出す"), tx("伴奏の音声もまとめた .zip"), () => void this.saveBundle()],
-      [tx("楽譜を読み込む"), tx("MusicXML（.musicxml・.xml・.mxl）・UST・USTX。新しい歌のトラックにする"), () => void this.importScore()],
+      [tx("楽譜を読み込む"), tx("MusicXML（.musicxml・.xml・.mxl）・UST・USTX・SVP。新しい歌のトラックにする"), () => void this.importScore()],
       [tx("USTX に書き出す"), tx("OpenUtau のプロジェクト（音符・歌詞・テンポ）"), () => void this.exportUstx()],
     ];
     for (const [label, sub, fn] of items) {
@@ -215,7 +215,7 @@ export class FileMenu {
   /** MusicXML・UST を読み、歌詞のあるパートごとに新しい歌のトラックを足す（最初の音符は 2 小節目より後ろに）。
    *  読み取りはブラウザの中（score.ts）。テンポは楽譜の値に合わせる。 */
   async importScore(file?: File): Promise<void> {
-    const f = file ?? await pickFile(".musicxml,.xml,.mxl,.ust,.ustx");
+    const f = file ?? await pickFile(".musicxml,.xml,.mxl,.ust,.ustx,.svp");
     if (!f) return;
     let j: ScoreResult;
     try {
@@ -245,8 +245,15 @@ export class FileMenu {
         voice: who.voice, voicebank: who.voicebank,
         color: "", mute: false, solo: false, base: defaultBase(),
         params: {}, notes: t.notes.map((n) => ({ id: nextId++, onset: n.onset + offset, dur: n.dur, pitch: n.pitch,
-                                                  lyric: n.lyric, attrs: defaultAttrs() })),
+                                                  lyric: n.lyric,
+                                                  attrs: { ...defaultAttrs(), ...(n.iMod !== undefined ? { iMod: n.iMod } : {}),
+                                                           ...(n.vMod !== undefined ? { vMod: n.vMod } : {}),
+                                                           ...(n.vib ? { vib: { ...n.vib } } : {}) } })),
       };
+      // 取り込んだ曲線（ピッチのずれなど）。音符と同じだけ後ろへずらす
+      for (const [k, c] of Object.entries(t.params ?? {})) {
+        if (c) tr.params[k as ParamKey] = { pts: c.pts.map(([x, y]) => [x + offset, y] as [number, number]), interp: c.interp };
+      }
       tr.region = trackRegion(tr, p.beatsPerBar);
       // 楽譜のブレスの記号の後の音符にブレスを入れる（この歌い手のブレスの束が読めていれば）
       const ctx = this.breathContext(tr);
